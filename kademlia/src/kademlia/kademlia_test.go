@@ -3,9 +3,6 @@ package kademlia
 // Kademlia Test Suite
 // written by jwhang
 
-// TODO NOTE IMPORTANT
-// Haven't figured out what to pass in to NewKademlia()...
-// Looks like some address but not entirely sure
 import (
 	"bytes"
 	"net"
@@ -58,6 +55,7 @@ func TestStore(t *testing.T) {
 	key, err := IDFromString("1234567890123456789012345678901234567890")
 	if err != nil {
 		t.Error("Couldn't encode key")
+		t.Fail()
 	}
 	value := []byte("somedata")
 	con := Contact{
@@ -85,6 +83,38 @@ func TestStore(t *testing.T) {
 		t.Error("TestStore: Value stored is incorrect")
 		t.Fail()
 	}
+}
+
+func TestLocalFindValue(t *testing.T) {
+	kc := new(KademliaCore)
+	kc.kademlia = NewKademlia("localhost:8000")
+	senderID := NewRandomID()
+	messageID := NewRandomID()
+	key := NewRandomID()
+	value := []byte("somevalue")
+	con := Contact{
+		NodeID: senderID,
+		Host:   net.IPv4(0x01, 0x02, 0x03, 0x04),
+		Port:   9000,
+	}
+	req := StoreRequest{
+		Sender: con,
+		MsgID:  messageID,
+		Key:    key,
+		Value:  value,
+	}
+	res := new(StoreResult)
+	err := kc.Store(req, res)
+	if err != nil {
+		t.Error("TestLocalFindValue: Failed to store the key-value pair")
+		t.Fail()
+	}
+	lookupRes := kc.kademlia.LocalFindValue(key)
+	if strings.Contains(lookupRes, "ERR") {
+		t.Error("TestLocalFindValue: Looks like the key-value somehow blew up")
+		t.Fail()
+	}
+
 }
 
 // TestFindValue
@@ -137,9 +167,11 @@ func TestStoreKeyWithFindValue(t *testing.T) {
 	}
 	if messageID.Equals(findResult.MsgID) == false {
 		t.Error("TestFindValue Failed: Message ID Doesn't match")
+		t.Fail()
 	}
 	if len(findResult.Nodes) != 1 {
 		t.Error("Returned neighbor nodes without any neighbors! Impossible!")
+		t.Error("Had " + string(len(findResult.Nodes)) + " neighbor(s) when it was supposed to be 1")
 		t.Fail()
 	}
 }
@@ -154,6 +186,7 @@ func TestPingSelf(t *testing.T) {
 	_, err := IDFromString("1234567890123456789012345678901234567890")
 	if err != nil {
 		t.Error("Couldn't encode key")
+		t.Fail()
 	}
 	//value := []byte("somedata")
 	selfHost := net.IPv4(127, 0, 0, 1)
@@ -218,12 +251,18 @@ func TestFindNode(t *testing.T) {
 		t.Error("TestPingAnother: Failed to ping node 2 from node 1")
 		t.Fail()
 	}
+	findContactRes, err := kc2.kademlia.FindContact(kc1ID)
+	if findContactRes.NodeID != kc1ID || findContactRes.Port != kc1Port {
+		t.Error("Contact not updated properly!")
+		t.Fail()
+	}
 
 	senderID := NewRandomID()
 	messageID := NewRandomID()
 	key, err := IDFromString("1234567890123456789012345678901234567890")
 	if err != nil {
 		t.Error("Couldn't encode key")
+		t.Fail()
 	}
 	value := []byte("somedata")
 	con := Contact{
@@ -244,6 +283,14 @@ func TestFindNode(t *testing.T) {
 		t.Fail()
 	}
 
+	/*
+		findCon := Contact{
+			NodeID: kc1ID,
+			Host:   kc1Host,
+			Port:   kc1Port,
+		}
+	*/
+
 	findCon := new(Contact)
 	findCon.NodeID = kc1ID
 	findCon.Host = kc1Host
@@ -252,6 +299,7 @@ func TestFindNode(t *testing.T) {
 	findres := kc2.kademlia.DoFindNode(findCon, key)
 	if strings.Contains(findres, "ERR") {
 		t.Error("DoFindNode failed")
+		t.Error("Returned " + findres)
 		t.Fail()
 	}
 }
@@ -279,6 +327,7 @@ func TestFindValue(t *testing.T) {
 	key, err := IDFromString("1234567890123456789012345678901234567890")
 	if err != nil {
 		t.Error("Couldn't encode key")
+		t.Fail()
 	}
 	value := []byte("somedata")
 	con := Contact{
