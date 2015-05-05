@@ -52,7 +52,7 @@ var hostIP = getHostIP()
 
 func TestStore(t *testing.T) {
 	kc := new(KademliaCore)
-	kc.kademlia = NewKademlia("localhost:1234")
+	kc.kademlia = NewKademlia("localhost:9000")
 	senderID := NewRandomID()
 	messageID := NewRandomID()
 	key, err := IDFromString("1234567890123456789012345678901234567890")
@@ -63,7 +63,7 @@ func TestStore(t *testing.T) {
 	con := Contact{
 		NodeID: senderID,
 		Host:   net.IPv4(0x01, 0x02, 0x03, 0x04),
-		Port:   1234,
+		Port:   9000,
 	}
 	req := StoreRequest{
 		Sender: con,
@@ -90,7 +90,7 @@ func TestStore(t *testing.T) {
 // TestFindValue
 func TestStoreKeyWithFindValue(t *testing.T) {
 	kc := new(KademliaCore)
-	kc.kademlia = NewKademlia("localhost:1235")
+	kc.kademlia = NewKademlia("localhost:9001")
 	senderID, messageID := NewRandomID(), NewRandomID()
 	key, err := IDFromString("1234567890123456789012345678901234567890")
 	if err != nil {
@@ -101,7 +101,7 @@ func TestStoreKeyWithFindValue(t *testing.T) {
 	con := Contact{
 		NodeID: senderID,
 		Host:   net.IPv4(127, 0, 0, 1),
-		Port:   1234,
+		Port:   9001,
 	}
 	req := StoreRequest{
 		Sender: con,
@@ -138,7 +138,7 @@ func TestStoreKeyWithFindValue(t *testing.T) {
 	if messageID.Equals(findResult.MsgID) == false {
 		t.Error("TestFindValue Failed: Message ID Doesn't match")
 	}
-	if len(findResult.Nodes) == 1 {
+	if len(findResult.Nodes) != 1 {
 		t.Error("Returned neighbor nodes without any neighbors! Impossible!")
 		t.Fail()
 	}
@@ -148,7 +148,7 @@ func TestStoreKeyWithFindValue(t *testing.T) {
 //Pings itself and sees if it exists in the contact
 func TestPingSelf(t *testing.T) {
 	kc := new(KademliaCore)
-	kc.kademlia = NewKademlia("localhost:1234")
+	kc.kademlia = NewKademlia("localhost:9002")
 	//senderID := NewRandomID()
 	//messageID := NewRandomID()
 	_, err := IDFromString("1234567890123456789012345678901234567890")
@@ -157,7 +157,7 @@ func TestPingSelf(t *testing.T) {
 	}
 	//value := []byte("somedata")
 	selfHost := net.IPv4(127, 0, 0, 1)
-	selfPort := uint16(1234)
+	selfPort := uint16(9002)
 	res := kc.kademlia.DoPing(selfHost, selfPort)
 	if strings.Contains(res, "ERR") {
 		t.Error("TestPingSelf: Failed to ping itself")
@@ -168,14 +168,14 @@ func TestPingSelf(t *testing.T) {
 func TestPingAnother(t *testing.T) {
 	kc1 := new(KademliaCore)
 	kc2 := new(KademliaCore)
-	kc1.kademlia = NewKademlia("localhost:7980")
-	kc2.kademlia = NewKademlia("localhost:1234")
+	kc1.kademlia = NewKademlia("localhost:9003")
+	kc2.kademlia = NewKademlia("localhost:9004")
 	kc1ID := kc1.kademlia.NodeID
 	kc1Host := net.IPv4(127, 0, 0, 1)
-	kc1Port := uint16(7890)
+	kc1Port := uint16(9003)
 	kc2ID := kc2.kademlia.NodeID
 	kc2Host := net.IPv4(127, 0, 0, 1)
-	kc2Port := uint16(1234)
+	kc2Port := uint16(9004)
 	res := kc1.kademlia.DoPing(kc2Host, kc2Port)
 	if strings.Contains(res, "ERR") {
 		t.Error("TestPingAnother: Failed to ping node 2 from node 1")
@@ -204,14 +204,14 @@ func TestPingAnother(t *testing.T) {
 func TestFindNode(t *testing.T) {
 	kc1 := new(KademliaCore)
 	kc2 := new(KademliaCore)
-	kc1.kademlia = NewKademlia("localhost:7980")
-	kc2.kademlia = NewKademlia("localhost:1234")
+	kc1.kademlia = NewKademlia("localhost:9005")
+	kc2.kademlia = NewKademlia("localhost:9006")
 	kc1ID := kc1.kademlia.NodeID
 	kc1Host := net.IPv4(127, 0, 0, 1)
-	kc1Port := uint16(7890)
+	kc1Port := uint16(9005)
 	//kc2ID := kc2.kademlia.NodeID
 	kc2Host := net.IPv4(127, 0, 0, 1)
-	kc2Port := uint16(1234)
+	kc2Port := uint16(9006)
 
 	res := kc1.kademlia.DoPing(kc2Host, kc2Port)
 	if strings.Contains(res, "ERR") {
@@ -229,7 +229,7 @@ func TestFindNode(t *testing.T) {
 	con := Contact{
 		NodeID: senderID,
 		Host:   net.IPv4(0x01, 0x02, 0x03, 0x04),
-		Port:   1234,
+		Port:   9006,
 	}
 	req := StoreRequest{
 		Sender: con,
@@ -259,14 +259,14 @@ func TestFindNode(t *testing.T) {
 func TestFindValue(t *testing.T) {
 	kc1 := new(KademliaCore)
 	kc2 := new(KademliaCore)
-	kc1.kademlia = NewKademlia("localhost:7980")
-	kc2.kademlia = NewKademlia("localhost:1234")
+	kc1.kademlia = NewKademlia("localhost:9007")
+	kc2.kademlia = NewKademlia("localhost:9008")
 	kc1ID := kc1.kademlia.NodeID
 	kc1Host := net.IPv4(127, 0, 0, 1)
-	kc1Port := uint16(7890)
+	kc1Port := uint16(9007)
 	//kc2ID := kc2.kademlia.NodeID
 	kc2Host := net.IPv4(127, 0, 0, 1)
-	kc2Port := uint16(1234)
+	kc2Port := uint16(9008)
 
 	res := kc1.kademlia.DoPing(kc2Host, kc2Port)
 	if strings.Contains(res, "ERR") {
@@ -284,7 +284,7 @@ func TestFindValue(t *testing.T) {
 	con := Contact{
 		NodeID: senderID,
 		Host:   net.IPv4(0x01, 0x02, 0x03, 0x04),
-		Port:   1234,
+		Port:   9008,
 	}
 	req := StoreRequest{
 		Sender: con,
