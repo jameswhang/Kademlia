@@ -254,10 +254,55 @@ func (k *Kademlia) DoIterativeFindNode(id ID) string {
 	// For project 2!
 	return "ERR: Not implemented"
 }
+
 func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 	// For project 2!
-	return "ERR: Not implemented"
+	k.Table[key] = value
+
+	// assumes that DoIterativeFindNode returns a set of contacts, but it currently returns a string of these contacts -> need to convert this string to the contacts
+	triples := k.DoIterativeFindNode(key)
+
+	s := ""
+
+	for _, cur_contact := range triples {
+		contact, err := k.FindContact(cur_contact.NodeID)
+		
+		if err != nill {
+			log.Fatal("ERR: ", err)
+		}
+
+		address := contact.Host.String() + ":" + strconv.Itoa(int(contact.Port))
+		client, err := rpc.DialHTTP("tcp", address)
+
+		if err != nill {
+			log.Fatal("ERR: ", err)
+		}
+		
+		request := new(FindValueRequest)
+		request.Sender = *contact
+		request.Key = key
+		request.MsgID = NewRandomID()
+
+		var result FindValueResult
+		
+		err = client.Call("KademliaCore.FindValue", request, &result)
+		
+		if err != nil {
+			log.Fatal("ERR: ", err)
+		}
+
+		// update contact in kbucket of this kademlia
+		if result.Err != nil {
+			return "ERR: Error occurred in FindValue RPC"
+		}
+
+		k.UpdateContactInKBucket(contact)
+
+		s += "OK: " + string(result.Value) + ".\n"
+	}
+	return s
 }
+
 func (k *Kademlia) DoIterativeFindValue(key ID) string {
 	// For project 2!
 	return "ERR: Not implemented"
