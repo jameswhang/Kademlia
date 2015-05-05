@@ -242,11 +242,11 @@ func executeLine(k *kademlia.Kademlia, line string) (response string) {
 
 	case toks[0] == "iterativeFindNode":
 		// perform an iterative find node
-		if len(toks) < 2 || len(toks) > 2 {
+		if len(toks) != 2 {
 			response = "usage: iterativeFindNode [nodeID]"
 			return
 		}
-		id, err := kademlia.IDFromString(toks[2])
+		id, err := kademlia.IDFromString(toks[1])
 		if err != nil {
 			response = "ERR: Provided an invalid node ID(" + toks[1] + ")"
 			return
@@ -255,7 +255,7 @@ func executeLine(k *kademlia.Kademlia, line string) (response string) {
 
 	case toks[0] == "iterativeStore":
 		// perform an iterative store
-		if len(toks) < 2 || len(toks) > 2 {
+		if len(toks) != 3 {
 			response = "usage: iterativeStore [key] [value]"
 			return
 		}
@@ -268,11 +268,11 @@ func executeLine(k *kademlia.Kademlia, line string) (response string) {
 
 	case toks[0] == "iterativeFindValue":
 		// performa an iterative find value
-		if len(toks) < 2 || len(toks) > 2 {
+		if len(toks) != 2 {
 			response = "usage: iterativeFindValue [key]"
 			return
 		}
-		key, err := kademlia.IDFromString(toks[2])
+		key, err := kademlia.IDFromString(toks[1])
 		if err != nil {
 			response = "ERR: Provided an invalid key (" + toks[1] + ")"
 			return
