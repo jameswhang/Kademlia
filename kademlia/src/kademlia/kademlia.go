@@ -308,14 +308,14 @@ func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 	for _, cur_contact := range triples {
 		contact, err := k.FindContact(cur_contact.NodeID)
 
-		if err != nill {
+		if err != nil {
 			log.Fatal("ERR: ", err)
 		}
 
 		address := contact.Host.String() + ":" + strconv.Itoa(int(contact.Port))
 		client, err := rpc.DialHTTP("tcp", address)
 
-		if err != nill {
+		if err != nil {
 			log.Fatal("ERR: ", err)
 		}
 
@@ -393,17 +393,33 @@ func (k *Kademlia) FindCloseContacts(key ID, req ID) []Contact {
 		contacts = append(contacts, val)
 	}
 
-	if len(contacts) != 20 {
-		if index == 159 {
-			index -= 1
+	if len(contacts) == 20 {
+		return contacts
+	}
+
+	// algorithm to add k elements to contacts slice and return it
+	left := index
+	right := index
+	for {
+		if left != 0 {
+			left -= 1
 		}
-		for _, val := range k.BucketList[index+1].ContactList {
+		if right != 159 {
+			right += 1
+		}
+
+		for _, val := range k.BucketList[right].ContactList {
 			contacts = append(contacts, val)
 			if len(contacts) == 20 {
-				break
+				return contacts
+			}
+		}
+
+		for _, val := range k.BucketList[left].ContactList {
+			contacts = append(contacts, val)
+			if len(contacts) == 20 {
+				return contacts
 			}
 		}
 	}
-
-	return contacts
 }
