@@ -271,7 +271,29 @@ func (k *Kademlia) LocalFindValue(searchKey ID) string {
 
 func (k *Kademlia) DoIterativeFindNode(id ID) string {
 	// For project 2!
-	return "ERR: Not implemented"
+	/*
+		for {
+			contacts := k.FindCloseContacts(k.NodeID, id)
+			if len(contacts) >= alpha {
+				// send 3 RPCs - which RPC??
+				for i := 0; i < alpha; i++ {
+					go func() {
+						request = new(FindNodeRequest)
+						result = new(FindNodeResult)
+
+					}
+				}
+			} else {
+				for i := 0; i < len(contacts); i++ {
+
+				}
+			}
+
+		}
+	*/
+	// Collect a list of k contacts
+	closeContacts := k.FindCloseContacts(k.NodeID, id)[0:alpha]
+
 }
 
 func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
@@ -285,7 +307,7 @@ func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 
 	for _, cur_contact := range triples {
 		contact, err := k.FindContact(cur_contact.NodeID)
-		
+
 		if err != nill {
 			log.Fatal("ERR: ", err)
 		}
@@ -296,16 +318,16 @@ func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 		if err != nill {
 			log.Fatal("ERR: ", err)
 		}
-		
+
 		request := new(FindValueRequest)
 		request.Sender = *contact
 		request.Key = key
 		request.MsgID = NewRandomID()
 
 		var result FindValueResult
-		
+
 		err = client.Call("KademliaCore.FindValue", request, &result)
-		
+
 		if err != nil {
 			log.Fatal("ERR: ", err)
 		}
