@@ -358,3 +358,43 @@ func TestFindValue(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestIterativeFindNode(t *testing.T) {
+	kc1 := new(KademliaCore)
+	kc2 := new(KademliaCore)
+	kc3 := new(KademliaCore)
+	kc1.kademlia = NewKademlia("localhost:9010")
+	kc2.kademlia = NewKademlia("localhost:9011")
+	kc3.kademlia = NewKademlia("localhost:9012")
+
+	kc1ID := kc1.kademlia.NodeID
+	kc2ID := kc2.kademlia.NodeID
+	kc3ID := kc3.kademlia.NodeID
+	kc1Host := net.IPv4(127, 0, 0, 1)
+	kc2Host := net.IPv4(127, 0, 0, 1)
+	kc3Host := net.IPv4(127, 0, 0, 1)
+	kc1Port := uint16(9010)
+	kc2Port := uint16(9011)
+	kc3Port := uint16(9012)
+
+	// Ping each other, but iteratively
+	// After this, node2 is known to node1, and node3 is known to node2
+	// We're gonna look up node 3 from node 1 to see if the iterative lookup works.
+	res := kc1.kademlia.DoPing(kc2Host, kc2Port)
+	if strings.Contains(res, "ERR") {
+		t.Error("TestIterativeFindNode: Ping failed")
+		t.Fail()
+	}
+
+	res = kc2.kademlia.DoPing(kc3Host, kc3Port)
+	if strings.Contains(res, "ERR") {
+		t.Error("TestIterativeFindNode: Ping failed")
+		t.Fail()
+	}
+
+	testRes := kc1.kademlia.DoIteartiveFindNode(kc3ID)
+	if strings.Contains(testRes, "ERR") {
+		t.Error("TestIterativeFindNode: Node lookup failed")
+		t.Fail()
+	}
+}
