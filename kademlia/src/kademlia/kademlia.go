@@ -271,28 +271,55 @@ func (k *Kademlia) LocalFindValue(searchKey ID) string {
 
 func (k *Kademlia) DoIterativeFindNode(id ID) string {
 	// For project 2!
-	/*
-		for {
-			contacts := k.FindCloseContacts(k.NodeID, id)
-			if len(contacts) >= alpha {
-				// send 3 RPCs - which RPC??
-				for i := 0; i < alpha; i++ {
-					go func() {
-						request = new(FindNodeRequest)
-						result = new(FindNodeResult)
+	shortlist := make(chan Contact)
+	contacts := k.FindCloseContacts(k.NodeID, id)
+	for i := 0; i < alpha; i++ {
+		shortlist <- contacts[i]
+	}
 
-					}
-				}
-			} else {
-				for i := 0; i < len(contacts); i++ {
-
-				}
+	for {
+		// send FIND_NODE RPCs to first 3 nodes
+		count := 0
+		for cont := range shortlist {
+			go SendRPC(cont, id, shortlist)
+			count += 1
+			if count == 3 {
+				break
 			}
-
 		}
-	*/
+	}
+
 	// Collect a list of k contacts
-	closeContacts := k.FindCloseContacts(k.NodeID, id)[0:alpha]
+
+}
+
+func (k *Kademlia) SendRPC(cont Contact, id ID, shortlist chan Contact) {
+
+	port_str := strconv.Itoa(int(cont.Port))
+	address := cont.Host.String() + ":" + port_str
+	client, err := rpc.DialHTTPPath("tcp", address, rpc.DefaultRPCPath+port_str)
+
+	if err != nil {
+		log.Fatal("ERR: ", err)
+	}
+
+	request := new(FindNodeRequest)
+	request.Sender = *cont
+	request.NodeID = id
+	request.MsgID = NewRandomID()
+
+	var result FindNodeResult
+	err = client.Call("KademliaCore.FindNode", request, &result)
+	if err != nil {
+		log.Fatal("ERR: ", err)
+	}
+
+	k.UpdateContactInKBucket(contact)
+
+	for _, newContact := range result.Nodes {
+		shortlist <- newContact
+	}
+
 
 }
 
