@@ -305,9 +305,13 @@ func (k *Kademlia) DoIterativeFindNode(id ID) string {
 			k.RemoveContactFromList(shortlist[index + 2], shortlist)
 		}
 
+		// add returned nodes to shortlist
 		shortlist = append(shortlist, res0)
 		shortlist = append(shortlist, res1)
 		shortlist = append(shortlist, res2)
+
+		// look at next 3 nodes
+		index += 3
 		
 	}
 	
