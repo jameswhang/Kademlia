@@ -317,11 +317,7 @@ func (k *Kademlia) DoIterativeFindNode(id ID) string {
 	
 }
 
-<<<<<<< HEAD
 func (k *Kademlia) SendRPC(cont Contact, id ID, c chan []Contact) {
-=======
-func (k *Kademlia) SendRPC(cont Contact, id ID, shortlist * map[Contact]bool) {
->>>>>>> 7b0477159db5db8b6b255d95b1d84aa449b94341
 
 	port_str := strconv.Itoa(int(cont.Port))
 	address := cont.Host.String() + ":" + port_str
@@ -346,15 +342,7 @@ func (k *Kademlia) SendRPC(cont Contact, id ID, shortlist * map[Contact]bool) {
 
 	k.UpdateContactInKBucket(contact)
 
-<<<<<<< HEAD
 	c <- result.Nodes
-=======
-	for _, newContact := range result.Nodes {
-		(*shortlist)[newContact] = false; // adding new contacts to the shortlist
-	}
-
-
->>>>>>> 7b0477159db5db8b6b255d95b1d84aa449b94341
 }
 
 func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
