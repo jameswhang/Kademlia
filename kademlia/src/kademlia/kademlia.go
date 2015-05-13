@@ -271,29 +271,50 @@ func (k *Kademlia) LocalFindValue(searchKey ID) string {
 
 func (k *Kademlia) DoIterativeFindNode(id ID) string {
 	// For project 2!
-	shortlist := make(chan Contact)
+	shortlist := make([]Contact, 0, k)
+	contacted := make([]Contact, 0, k)
 	contacts := k.FindCloseContacts(k.NodeID, id)
 	for i := 0; i < alpha; i++ {
-		shortlist <- contacts[i]
+		shortlist = append(shortlist, contacts[i])
 	}
+
+	closestNode := shortlist[0]
+	index := 0
+	c := make(chan, []Contact)
 
 	for {
 		// send FIND_NODE RPCs to first 3 nodes
-		count := 0
-		for cont := range shortlist {
-			go SendRPC(cont, id, shortlist)
-			count += 1
-			if count == 3 {
-				break
-			}
+		go SendRPC(shortlist[index], id, c)
+		go SendRPC(shortlist[index + 1], id, c)
+		go SendRPC(shortlist[index + 2], id, c)
+		contacted = append(contacted, shortlist[index], shortlist[index + 1], shortlist[index + 2])
+		// wait for returns
+		res0 <- c
+		res1 <- c
+		res2 <- c
+
+		// if nil returned, remove from shortlist
+		if res0 == nil {
+			k.RemoveContactFromList(shortlist[index], shortlist)
 		}
+		if res1 == nil {
+			k.RemoveContactFromList(shortlist[index + 1], shortlist)
+		}
+		if res2 == nil {
+			k.RemoveContactFromList(shortlist[index + 2], shortlist)
+		}
+
+		shortlist = append(shortlist, res0)
+		shortlist = append(shortlist, res1)
+		shortlist = append(shortlist, res2)
+		
 	}
 
 	// Collect a list of k contacts
 
 }
 
-func (k *Kademlia) SendRPC(cont Contact, id ID, shortlist chan Contact) {
+func (k *Kademlia) SendRPC(cont Contact, id ID, c chan []Contact) {
 
 	port_str := strconv.Itoa(int(cont.Port))
 	address := cont.Host.String() + ":" + port_str
@@ -316,11 +337,7 @@ func (k *Kademlia) SendRPC(cont Contact, id ID, shortlist chan Contact) {
 
 	k.UpdateContactInKBucket(contact)
 
-	for _, newContact := range result.Nodes {
-		shortlist <- newContact
-	}
-
-
+	c <- result.Nodes
 }
 
 func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
