@@ -11,6 +11,7 @@ import (
 	"net/rpc"
 	"strconv"
 	"sync"
+	"time"
 )
 
 const (
@@ -271,29 +272,31 @@ func (k *Kademlia) LocalFindValue(searchKey ID) string {
 
 func (k *Kademlia) DoIterativeFindNode(id ID) string {
 	// For project 2!
-	shortlist := make(chan Contact)
+	shortlist := make(map[Contact]bool)
+	toSendRPC := make([]Contact, 3)
 	contacts := k.FindCloseContacts(k.NodeID, id)
 	for i := 0; i < alpha; i++ {
-		shortlist <- contacts[i]
+		shortlist[contacts[i]] = false
+		toSendRPC[i] = contacts[i]
 	}
 
-	for {
-		// send FIND_NODE RPCs to first 3 nodes
-		count := 0
-		for cont := range shortlist {
-			go SendRPC(cont, id, shortlist)
-			count += 1
-			if count == 3 {
-				break
-			}
+	for ; total < k; { // top-level wrapper; break when k contacts have been collected.
+		for i := 0; i < alpha; i++ {
+			go SendRPC(toSendRPC[i], id, &shortlist)
 		}
+
+		time.Sleep(1e9) // not sure if we need to wait till the SendRPCs to come back.
+		// Sleeping for 10^-9 won't be too bad anyway even if that's not the case.
+
+		// Update 
+
+
+
 	}
-
-	// Collect a list of k contacts
-
+	
 }
 
-func (k *Kademlia) SendRPC(cont Contact, id ID, shortlist chan Contact) {
+func (k *Kademlia) SendRPC(cont Contact, id ID, shortlist * map[Contact]bool) {
 
 	port_str := strconv.Itoa(int(cont.Port))
 	address := cont.Host.String() + ":" + port_str
@@ -312,12 +315,14 @@ func (k *Kademlia) SendRPC(cont Contact, id ID, shortlist chan Contact) {
 	err = client.Call("KademliaCore.FindNode", request, &result)
 	if err != nil {
 		log.Fatal("ERR: ", err)
+	} else {
+		(*shortlist)[cont] = true; // contact replied. update the shortlist
 	}
 
 	k.UpdateContactInKBucket(contact)
 
 	for _, newContact := range result.Nodes {
-		shortlist <- newContact
+		(*shortlist)[newContact] = false; // adding new contacts to the shortlist
 	}
 
 
