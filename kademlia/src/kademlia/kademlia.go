@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 	"math"
+	"bytes"
 )
 
 const (
@@ -35,6 +36,7 @@ type Kademlia struct {
 type ContactWrapper struct {
 	Contact 		Contact
 	KnownContacts	[]Contact
+	Error 			error
 }
 
 func NewKademlia(laddr string) *Kademlia {
@@ -277,15 +279,15 @@ func (k *Kademlia) LocalFindValue(searchKey ID) string {
 }
 
 func (k *Kademlia) DoIterativeFindNode(id ID) string {
-	kContacts := DoIterativeFindNodeWrapper(id)
+	kContacts := k.DoIterativeFindNodeWrapper(id)
 	res := ""
 
 	count := 0
-	for con := range kContacts {
+	for _, con := range kContacts {
 		res += "--Triple " + strconv.Itoa(count) + "--"
-		res += "NodeID = " + con.NodeID + "\n"
+		res += "NodeID = " + con.NodeID.AsString() + "\n"
 		res += "Host = " + con.Host.String() + "\n"
-		res += "Port = " + strconv.Iota(int(con.Port))
+		res += "Port = " + strconv.Itoa(int(con.Port))
 		res += "-------------"
 	}
 	return res
@@ -301,12 +303,10 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 		shortlist[contacts[i]] = false
 	}
 
-	closestNode := shortlist[0]
-	index := 0
-	c := make(chan, ContactWrapper)
+	c := make(chan ContactWrapper)
+	stopIter := false
 
-
-	for len(contacted < 20 && !stopIter) {
+	for len(contacted) < 20 && !stopIter {
 		toContact := make([]Contact, 3)
 
 
@@ -314,34 +314,31 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 		for s_contact, _ := range shortlist {
 			if count > alpha {
 				break;
-			}
-			else if alreadyVisited(visited, s_contact){
+			} else if !alreadyContacted(contacted, s_contact){
 				toContact = append(toContact, s_contact)
 				count += 1
 			}
 		}
 
-		for con := range toContact {
-			go SendRPC(con, id, c)
-			contacted = append(contacted, shortlist[index])
-			shortlist[con] = true
+		for _, con := range toContact {
+			go k.SendRPC(con, id, c)
 		}
 
 		time.Sleep(1e9)
 		
 		stopIter = true
 
-		for i := 0; i < alpha; i ++ {
-			res <- c
+		for i := 0; i < alpha; i++ {
+			res := <- c
 			// TODO: Somehow remove unresponsive node from the shortlist if RPC returns err
-			if res != nil {
+			if res.Error != nil {
 
 				// update shortlist if they responded
 				shortlist[res.Contact] = true
 
-				for newContact := range res.KnownContacts {
+				for _, newContact := range res.KnownContacts {
 					dist := FindDistance(newContact.NodeID, id)
-					maxNode, maxDist := FindMaxDistContact(&shortlist, key)
+					maxNode, maxDist := FindMaxDist(&shortlist, id)
 
 					if dist < maxDist { 
 						delete(shortlist, maxNode) // remove the node from shortlist if the new node is closer
@@ -363,27 +360,28 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 			}
 		}
 	}
-
 	return contacted // TODO: change this to printable string
 }
 
-func (k *Kademlia) SendRPC(cont Contact, id ID, c chan []Contact) {
+func (k *Kademlia) SendRPC(cont Contact, id ID, c chan ContactWrapper) {
 	port_str := strconv.Itoa(int(cont.Port))
 	address := cont.Host.String() + ":" + port_str
 	client, _ := rpc.DialHTTPPath("tcp", address, rpc.DefaultRPCPath+port_str)
 
 	request := new(FindNodeRequest)
-	request.Sender = *cont
+	request.Sender = cont
 	request.NodeID = id
 	request.MsgID = NewRandomID()
 
 	var result FindNodeResult
-	err = client.Call("KademliaCore.FindNode", request, &result)
+	err := client.Call("KademliaCore.FindNode", request, &result)
 	if err != nil {
-		c <- nil
+		cWrapper := new(ContactWrapper)
+		cWrapper.Error = err
+		c <- *cWrapper
 	} else {
-		k.UpdateContactInKBucket(cont)
-		cWrapper = new(ContactWrapper)
+		k.UpdateContactInKBucket(&cont)
+		cWrapper := new(ContactWrapper)
 		cWrapper.Contact = cont
 		cWrapper.KnownContacts = result.Nodes
 		c <- *cWrapper
@@ -392,6 +390,7 @@ func (k *Kademlia) SendRPC(cont Contact, id ID, c chan []Contact) {
 
 func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 	// For project 2!
+	/*
 	k.Table[key] = value
 
 	// assumes that DoIterativeFindNode returns a set of contacts, but it currently returns a string of these contacts -> need to convert this string to the contacts
@@ -435,6 +434,8 @@ func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 
 		s += "OK: " + string(result.Value) + ".\n"
 	}
+	*/
+	s := ""
 	return s
 }
 
@@ -518,13 +519,13 @@ func (k *Kademlia) FindCloseContacts(key ID, req ID) []Contact {
 	}
 }
 
-func FindDistance(keyOne ID, keyTwo ID) {
+func FindDistance(keyOne ID, keyTwo ID) int {
 	return keyOne.Xor(keyTwo).PrefixLen()
 }
 
-func FindMaxDist(shortlist * map[Contact]bool, key ID) {
-	maxDistance := math.MinUint32
-	maxContact Contact
+func FindMaxDist(shortlist * map[Contact]bool, key ID) (Contact, int) {
+	maxDistance := math.MinInt32
+	var maxContact Contact
 
 	for con := range(*shortlist) {
 		newDist := FindDistance(con.NodeID, key)
@@ -537,6 +538,19 @@ func FindMaxDist(shortlist * map[Contact]bool, key ID) {
 	return maxContact, maxDistance
 }
 
-func alreadyVisited(visited , s_contact){
-	// TODO
+func alreadyContacted(contacted []Contact, s_contact Contact) bool {
+	for _, con := range contacted {
+		if areSameContacts(con, s_contact) {
+			return true
+		}
+	}
+	return false
+}
+
+func areSameContacts(first Contact, second Contact) bool {
+	if bytes.Equal(first.Host, second.Host) && first.NodeID == second.NodeID && first.Port == second.Port {
+		return true
+	} else {
+		return false
+	}
 }
