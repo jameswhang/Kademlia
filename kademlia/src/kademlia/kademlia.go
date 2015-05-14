@@ -32,6 +32,11 @@ type Kademlia struct {
 	BucketMutexLock [bucket_count]sync.Mutex
 }
 
+type ContactWrapper struct {
+	Contact 		Contact
+	KnownContacts	[]Contact
+}
+
 func NewKademlia(laddr string) *Kademlia {
 	k := new(Kademlia)
 	k.NodeID = NewRandomID()
@@ -298,7 +303,7 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 
 	closestNode := shortlist[0]
 	index := 0
-	c := make(chan, []Contact)
+	c := make(chan, ContactWrapper)
 
 
 	for len(contacted < 20 && !stopIter) {
@@ -332,9 +337,9 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 			if res != nil {
 
 				// update shortlist if they responded
-				shortlist[toContact[i]] = true
+				shortlist[res.Contact] = true
 
-				for newContact := range res {
+				for newContact := range res.KnownContacts {
 					dist := FindDistance(newContact.NodeID, id)
 					maxNode, maxDist := FindMaxDistContact(&shortlist, key)
 
@@ -347,7 +352,7 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 					}
 				}
 			} else {
-				delete(shortlist, toContact[i]) // remove unresponsive node
+				delete(shortlist, res.Contact) // remove unresponsive node
 			}
 		}
 
@@ -377,8 +382,11 @@ func (k *Kademlia) SendRPC(cont Contact, id ID, c chan []Contact) {
 	if err != nil {
 		c <- nil
 	} else {
-		k.UpdateContactInKBucket(contact)
-		c <- result.Nodes
+		k.UpdateContactInKBucket(cont)
+		cWrapper = new(ContactWrapper)
+		cWrapper.Contact = cont
+		cWrapper.KnownContacts = result.Nodes
+		c <- *cWrapper
 	}
 }
 
