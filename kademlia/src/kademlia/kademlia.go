@@ -295,12 +295,14 @@ func (k *Kademlia) DoIterativeFindNode(id ID) string {
 
 func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 	// For project 2!
-	shortlist := make(map[Contact]bool)
+	shortlist := make(map[ID]bool)
+	lookup := make(map[ID]Contact)
 	contacted := make([]Contact, 20)
 	//contacted := make(map[Contact]bool)
 	contacts := k.FindCloseContacts(k.NodeID, id)
 	for i := 0; i < alpha; i++ {
-		shortlist[contacts[i]] = false
+		shortlist[contacts[i].NodeID] = false
+		lookup[contacts[i].NodeID] = contacts[i]
 	}
 
 	c := make(chan ContactWrapper)
@@ -311,11 +313,11 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 
 
 		count := 0
-		for s_contact, _ := range shortlist {
+		for s_contact_id, _ := range shortlist {
 			if count > alpha {
 				break;
-			} else if !alreadyContacted(contacted, s_contact){
-				toContact = append(toContact, s_contact)
+			} else if !alreadyContacted(contacted, lookup[s_contact_id]){
+				toContact = append(toContact, lookup[s_contact_id])
 				count += 1
 			}
 		}
@@ -334,29 +336,32 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 			if res.Error != nil {
 
 				// update shortlist if they responded
-				shortlist[res.Contact] = true
+				shortlist[res.Contact.NodeID] = true
+				lookup[res.Contact.NodeID] = res.Contact
 
 				for _, newContact := range res.KnownContacts {
 					dist := FindDistance(newContact.NodeID, id)
-					maxNode, maxDist := FindMaxDist(&shortlist, id)
+					maxNodeID, maxDist := FindMaxDist(shortlist, id)
 
 					if dist < maxDist { 
-						delete(shortlist, maxNode) // remove the node from shortlist if the new node is closer
-						shortlist[newContact] = false
+						delete(shortlist, maxNodeID) // remove the node from shortlist if the new node is closer
+						delete(lookup, maxNodeID)
+						shortlist[newContact.NodeID] = false
 						if stopIter {
 							stopIter = false
 						}
 					}
 				}
 			} else {
-				delete(shortlist, res.Contact) // remove unresponsive node
+				delete(lookup, res.Contact.NodeID)
+				delete(shortlist, res.Contact.NodeID) // remove unresponsive node
 			}
 		}
 
 		// updating the contacted list
-		for s_contact, is_alive := range shortlist {
+		for s_contact_id, is_alive := range shortlist {
 			if is_alive {
-				contacted = append(contacted, s_contact)
+				contacted = append(contacted, lookup[s_contact_id])
 			}
 		}
 	}
@@ -523,19 +528,19 @@ func FindDistance(keyOne ID, keyTwo ID) int {
 	return keyOne.Xor(keyTwo).PrefixLen()
 }
 
-func FindMaxDist(shortlist * map[Contact]bool, key ID) (Contact, int) {
+func FindMaxDist(shortlist map[ID]bool, key ID) (ID, int) {
 	maxDistance := math.MinInt32
-	var maxContact Contact
+	var maxContactID ID
 
-	for con := range(*shortlist) {
-		newDist := FindDistance(con.NodeID, key)
+	for conID, _ := range shortlist {
+		newDist := FindDistance(conID, key)
 		if newDist > maxDistance {
-			maxContact = con
+			maxContactID = conID
 			maxDistance = newDist
 		}
 	}
 
-	return maxContact, maxDistance
+	return maxContactID, maxDistance
 }
 
 func alreadyContacted(contacted []Contact, s_contact Contact) bool {
