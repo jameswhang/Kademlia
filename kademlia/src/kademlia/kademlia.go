@@ -272,49 +272,56 @@ func (k *Kademlia) LocalFindValue(searchKey ID) string {
 
 func (k *Kademlia) DoIterativeFindNode(id ID) string {
 	// For project 2!
-	shortlist := make([]Contact, 0, k)
-	contacted := make([]Contact, 0, k)
+	shortlist := make(map[Contact]bool)
+	contacted := make([]Contact, 20)
+	//contacted := make(map[Contact]bool)
 	contacts := k.FindCloseContacts(k.NodeID, id)
 	for i := 0; i < alpha; i++ {
-		shortlist = append(shortlist, contacts[i])
+		shortlist[contacts[i]] = false;
 	}
 
 	closestNode := shortlist[0]
 	index := 0
 	c := make(chan, []Contact)
 
-	for {
-		// send FIND_NODE RPCs to first 3 nodes
-		go SendRPC(shortlist[index], id, c)
-		go SendRPC(shortlist[index + 1], id, c)
-		go SendRPC(shortlist[index + 2], id, c)
-		contacted = append(contacted, shortlist[index], shortlist[index + 1], shortlist[index + 2])
-		// wait for returns
-		res0 <- c
-		res1 <- c
-		res2 <- c
+	for len(contacted < 20) {
+		toContact := make([]Contact, 3)
 
-		// if nil returned, remove from shortlist
-		if res0 == nil {
-			k.RemoveContactFromList(shortlist[index], shortlist)
-		}
-		if res1 == nil {
-			k.RemoveContactFromList(shortlist[index + 1], shortlist)
-		}
-		if res2 == nil {
-			k.RemoveContactFromList(shortlist[index + 2], shortlist)
+		count := 0
+		for s_contact, _ := range shortlist {
+			if count > 3 {
+				break;
+			}
+			else {
+				toContact = append(toContact, s_contact)
+				count += 1
+			}
 		}
 
-		// add returned nodes to shortlist
-		shortlist = append(shortlist, res0)
-		shortlist = append(shortlist, res1)
-		shortlist = append(shortlist, res2)
+		for con := range toContact {
+			go SendRPC(con, id, c)
+			contacted = append(contacted, shortlist[index])
+		}
 
-		// look at next 3 nodes
-		index += 3
+		time.Sleep(1e9)
 		
+		for i := 0; i < alpha; i++ {
+			res <- c
+			if res != nil {
+				shortlist[toContact[i]] = true; // this one shows that the contacted node is alive
+				shortlist[res] = false; // these are the new nodes that were returned from the rpcs
+			}
+		}
+
+		// updating the contacted list
+		for s_contact, is_alive := range shortlist {
+			if is_alive {
+				contacted = append(contacted, s_contact)
+			}
+		}
 	}
-	
+
+	return contacted // TODO: change this to printable string
 }
 
 func (k *Kademlia) SendRPC(cont Contact, id ID, c chan []Contact) {
