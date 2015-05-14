@@ -277,7 +277,7 @@ func (k *Kademlia) DoIterativeFindNode(id ID) string {
 	//contacted := make(map[Contact]bool)
 	contacts := k.FindCloseContacts(k.NodeID, id)
 	for i := 0; i < alpha; i++ {
-		shortlist[contacts[i]] = false;
+		shortlist[contacts[i]] = false
 	}
 
 	closestNode := shortlist[0]
