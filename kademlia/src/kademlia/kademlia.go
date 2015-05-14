@@ -293,7 +293,7 @@ func (k *Kademlia) DoIterativeFindNode(id ID) string {
 			if count > 3 {
 				break;
 			}
-			else {
+			else if alreadyVisited(visited, s_contact){
 				toContact = append(toContact, s_contact)
 				count += 1
 			}
@@ -508,4 +508,8 @@ func FindMaxDist(shortlist * map[Contact]bool, key ID) {
 	}
 
 	return maxContact, maxDistance
+}
+
+func alreadyVisited(visited , s_contact){
+	// TODO
 }
