@@ -39,6 +39,13 @@ type ContactWrapper struct {
 	Error 			error
 }
 
+type ValueWrapper struct {
+	Contact 		Contact
+	KnownContacts	[]Contact
+	Value 			[]byte
+	Error 			error
+}
+
 func NewKademlia(laddr string) *Kademlia {
 	k := new(Kademlia)
 	k.NodeID = NewRandomID()
@@ -445,7 +452,7 @@ func (k *Kademlia) DoIterativeFindValue(key ID) string {
 		lookup[contacts[i].NodeID] = contacts[i]
 	}
 
-	c := make(chan ContactWrapper)
+	c := make(chan ValueWrapper)
 	stopIter := false
 
 	for len(contacted) < 20 && !stopIter {
