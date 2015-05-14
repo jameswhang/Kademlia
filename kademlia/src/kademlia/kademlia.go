@@ -393,6 +393,33 @@ func (k *Kademlia) SendRPCFindNode(cont Contact, id ID, c chan ContactWrapper) {
 	}
 }
 
+func (k *Kademlia) SendRPCFindValue(cont Contact, id ID, c chan ContactWrapper) {
+	port_str := strconv.Itoa(int(cont.Port))
+	address := cont.Host.String() + ":" + port_str
+	client, _ := rpc.DialHTTPPath("tcp", address, rpc.DefaultRPCPath+port_str)
+
+	request := new(FindNodeRequest)
+	request.Sender = cont
+	request.NodeID = id
+	request.MsgID = NewRandomID()
+
+	var result FindNodeResult
+	err := client.Call("KademliaCore.FindValue", request, &result)
+	if err != nil {
+		vWrapper := new(ValueWrapper)
+		vWrapper.contacted = cont
+		vWrapper.KnownContacts = result.Nodes
+		vWrapper.Error = err
+		c <- *vWrapper
+	} else {
+		k.UpdateContactInKBucket(&cont)
+		vWrapper := new(ValueWrapper)
+		vWrapper.contacted = cont
+		vWrapper.Value = result.Value
+		c <- *vWrapper
+	}
+}
+
 func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 	// For project 2!
 	triples := k.DoIterativeFindNodeWrapper(k.NodeID)
