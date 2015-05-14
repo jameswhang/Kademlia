@@ -96,7 +96,7 @@ type FindNodeResult struct {
 func (kc *KademliaCore) FindNode(req FindNodeRequest, res *FindNodeResult) error {
 	kc.kademlia.UpdateContacts(req.Sender)
 	res.MsgID = CopyID(req.MsgID)
-	res.Nodes = kc.kademlia.FindCloseContacts(req.NodeID, kc.kademlia.NodeID)
+	res.Nodes = kc.kademlia.FindCloseContacts(req.NodeID)
 	res.Err = nil
 
 	// update contact in kbucket
@@ -128,7 +128,7 @@ func (kc *KademliaCore) FindValue(req FindValueRequest, res *FindValueResult) er
 	kc.kademlia.TableMutexLock.Lock() // jwhang: Pretty sure you don't need a lock for reading values. Let me check OS slides.
 	val := kc.kademlia.Table[req.Key]
 	kc.kademlia.TableMutexLock.Unlock()
-	res.Nodes = kc.kademlia.FindCloseContacts(req.Sender.NodeID, kc.kademlia.NodeID)
+	res.Nodes = kc.kademlia.FindCloseContacts(req.Sender.NodeID)
 
 	if val == nil || len(val) == 0 {
 		res.Value = nil
