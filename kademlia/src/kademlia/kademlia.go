@@ -395,53 +395,15 @@ func (k *Kademlia) SendRPC(cont Contact, id ID, c chan ContactWrapper) {
 
 func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 	// For project 2!
-	/*
-	k.Table[key] = value
+	triples := k.DoIterativeFindNodeWrapper(k.NodeID)
+	var lastSent ID
 
-	// assumes that DoIterativeFindNode returns a set of contacts, but it currently returns a string of these contacts -> need to convert this string to the contacts
-	triples := k.DoIterativeFindNode(key)
-
-	s := ""
-
-	for _, cur_contact := range triples {
-		contact, err := k.FindContact(cur_contact.NodeID)
-
-		if err != nil {
-			log.Fatal("ERR: ", err)
-		}
-
-		address := contact.Host.String() + ":" + strconv.Itoa(int(contact.Port))
-		client, err := rpc.DialHTTP("tcp", address)
-
-		if err != nil {
-			log.Fatal("ERR: ", err)
-		}
-
-		request := new(FindValueRequest)
-		request.Sender = *contact
-		request.Key = key
-		request.MsgID = NewRandomID()
-
-		var result FindValueResult
-
-		err = client.Call("KademliaCore.FindValue", request, &result)
-
-		if err != nil {
-			log.Fatal("ERR: ", err)
-		}
-
-		// update contact in kbucket of this kademlia
-		if result.Err != nil {
-			return "ERR: Error occurred in FindValue RPC"
-		}
-
-		k.UpdateContactInKBucket(contact)
-
-		s += "OK: " + string(result.Value) + ".\n"
+	for _, con := range triples {
+		k.DoStore(con, key, value)
+		lastSent = con.NodeID
 	}
-	*/
-	s := ""
-	return s
+
+	return "Final Store occurred at: " + lastSent.AsString()
 }
 
 func (k *Kademlia) DoIterativeFindValue(key ID) string {
