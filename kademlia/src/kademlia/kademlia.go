@@ -323,7 +323,7 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 		}
 
 		for _, con := range toContact {
-			go k.SendRPC(con, id, c)
+			go k.SendRPCFindNode(con, id, c)
 		}
 
 		time.Sleep(1e9)
@@ -368,7 +368,7 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 	return contacted // TODO: change this to printable string
 }
 
-func (k *Kademlia) SendRPC(cont Contact, id ID, c chan ContactWrapper) {
+func (k *Kademlia) SendRPCFindNode(cont Contact, id ID, c chan ContactWrapper) {
 	port_str := strconv.Itoa(int(cont.Port))
 	address := cont.Host.String() + ":" + port_str
 	client, _ := rpc.DialHTTPPath("tcp", address, rpc.DefaultRPCPath+port_str)
@@ -399,7 +399,7 @@ func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 	var lastSent ID
 
 	for _, con := range triples {
-		k.DoStore(con, key, value)
+		k.DoStore(&con, key, value)
 		lastSent = con.NodeID
 	}
 
@@ -408,7 +408,77 @@ func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 
 func (k *Kademlia) DoIterativeFindValue(key ID) string {
 	// For project 2!
-	return "ERR: Not implemented"
+	shortlist := make(map[ID]bool)
+	lookup := make(map[ID]Contact)
+	contacted := make([]Contact, 20)
+	//contacted := make(map[Contact]bool)
+	contacts := k.FindCloseContacts(k.NodeID, id)
+	for i := 0; i < alpha; i++ {
+		shortlist[contacts[i].NodeID] = false
+		lookup[contacts[i].NodeID] = contacts[i]
+	}
+
+	c := make(chan ContactWrapper)
+	stopIter := false
+
+	for len(contacted) < 20 && !stopIter {
+		toContact := make([]Contact, 3)
+
+
+		count := 0
+		for s_contact_id, _ := range shortlist {
+			if count > alpha {
+				break;
+			} else if !alreadyContacted(contacted, lookup[s_contact_id]){
+				toContact = append(toContact, lookup[s_contact_id])
+				count += 1
+			}
+		}
+
+		for _, con := range toContact {
+			go k.SendRPC(con, id, c)
+		}
+
+		time.Sleep(1e9)
+		
+		stopIter = true
+
+		for i := 0; i < alpha; i++ {
+			res := <- c
+			// TODO: Somehow remove unresponsive node from the shortlist if RPC returns err
+			if res.Error != nil {
+
+				// update shortlist if they responded
+				shortlist[res.Contact.NodeID] = true
+				lookup[res.Contact.NodeID] = res.Contact
+
+				for _, newContact := range res.KnownContacts {
+					dist := FindDistance(newContact.NodeID, id)
+					maxNodeID, maxDist := FindMaxDist(shortlist, id)
+
+					if dist < maxDist { 
+						delete(shortlist, maxNodeID) // remove the node from shortlist if the new node is closer
+						delete(lookup, maxNodeID)
+						shortlist[newContact.NodeID] = false
+						if stopIter {
+							stopIter = false
+						}
+					}
+				}
+			} else {
+				delete(lookup, res.Contact.NodeID)
+				delete(shortlist, res.Contact.NodeID) // remove unresponsive node
+			}
+		}
+
+		// updating the contacted list
+		for s_contact_id, is_alive := range shortlist {
+			if is_alive {
+				contacted = append(contacted, lookup[s_contact_id])
+			}
+		}
+	}
+	return contacted // TODO: change this to printable string
 }
 
 func (k *Kademlia) UpdateContactInKBucket(update *Contact) {
