@@ -285,12 +285,14 @@ func (k *Kademlia) DoIterativeFindNode(id ID) string {
 	index := 0
 	c := make(chan, []Contact)
 
+
 	for len(contacted < 20 && !stopIter) {
 		toContact := make([]Contact, 3)
 
+
 		count := 0
 		for s_contact, _ := range shortlist {
-			if count > 3 {
+			if count > alpha {
 				break;
 			}
 			else if alreadyVisited(visited, s_contact){
@@ -309,18 +311,28 @@ func (k *Kademlia) DoIterativeFindNode(id ID) string {
 		
 		stopIter = true
 
-		for res := range c {
+		for i := 0; i < alpha; i ++ {
+			res <- c
+			// TODO: Somehow remove unresponsive node from the shortlist if RPC returns err
 			if res != nil {
-				dist := FindDistance(res.NodeID, id)
-				maxNode, maxDist := FindMaxDistContact(&shortlist, key)
 
-				if dist < maxDist { 
-					delete(shortlist, maxNode) // remove the node from shortlist if the new node is closer
-					shortlist[res] = false
-					if stopIter {
-						stopIter = false
+				// update shortlist if they responded
+				shortlist[toContact[i]] = true
+
+				for newContact := range res {
+					dist := FindDistance(newContact.NodeID, id)
+					maxNode, maxDist := FindMaxDistContact(&shortlist, key)
+
+					if dist < maxDist { 
+						delete(shortlist, maxNode) // remove the node from shortlist if the new node is closer
+						shortlist[newContact] = false
+						if stopIter {
+							stopIter = false
+						}
 					}
 				}
+			} else {
+				delete(shortlist, toContact[i]) // remove unresponsive node
 			}
 		}
 
@@ -336,14 +348,9 @@ func (k *Kademlia) DoIterativeFindNode(id ID) string {
 }
 
 func (k *Kademlia) SendRPC(cont Contact, id ID, c chan []Contact) {
-
 	port_str := strconv.Itoa(int(cont.Port))
 	address := cont.Host.String() + ":" + port_str
-	client, err := rpc.DialHTTPPath("tcp", address, rpc.DefaultRPCPath+port_str)
-
-	if err != nil {
-		log.Fatal("ERR: ", err)
-	}
+	client, _ := rpc.DialHTTPPath("tcp", address, rpc.DefaultRPCPath+port_str)
 
 	request := new(FindNodeRequest)
 	request.Sender = *cont
@@ -353,14 +360,11 @@ func (k *Kademlia) SendRPC(cont Contact, id ID, c chan []Contact) {
 	var result FindNodeResult
 	err = client.Call("KademliaCore.FindNode", request, &result)
 	if err != nil {
-		log.Fatal("ERR: ", err)
+		c <- nil
 	} else {
-		(*shortlist)[cont] = true; // contact replied. update the shortlist
+		k.UpdateContactInKBucket(contact)
+		c <- result.Nodes
 	}
-
-	k.UpdateContactInKBucket(contact)
-
-	c <- result.Nodes
 }
 
 func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
