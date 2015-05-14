@@ -273,9 +273,20 @@ func (k *Kademlia) LocalFindValue(searchKey ID) string {
 
 func (k *Kademlia) DoIterativeFindNode(id ID) string {
 	kContacts := DoIterativeFindNodeWrapper(id)
+	res := ""
+
+	count := 0
+	for con := range kContacts {
+		res += "--Triple " + strconv.Itoa(count) + "--"
+		res += "NodeID = " + con.NodeID + "\n"
+		res += "Host = " + con.Host.String() + "\n"
+		res += "Port = " + strconv.Iota(int(con.Port))
+		res += "-------------"
+	}
+	return res
 }
 
-func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) string {
+func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 	// For project 2!
 	shortlist := make(map[Contact]bool)
 	contacted := make([]Contact, 20)
