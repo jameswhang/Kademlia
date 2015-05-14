@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"math"
 )
 
 const (
@@ -284,7 +285,7 @@ func (k *Kademlia) DoIterativeFindNode(id ID) string {
 	index := 0
 	c := make(chan, []Contact)
 
-	for len(contacted < 20) {
+	for len(contacted < 20 && !stopIter) {
 		toContact := make([]Contact, 3)
 
 		count := 0
@@ -301,15 +302,25 @@ func (k *Kademlia) DoIterativeFindNode(id ID) string {
 		for con := range toContact {
 			go SendRPC(con, id, c)
 			contacted = append(contacted, shortlist[index])
+			shortlist[con] = true
 		}
 
 		time.Sleep(1e9)
 		
-		for i := 0; i < alpha; i++ {
-			res <- c
+		stopIter = true
+
+		for res := range c {
 			if res != nil {
-				shortlist[toContact[i]] = true; // this one shows that the contacted node is alive
-				shortlist[res] = false; // these are the new nodes that were returned from the rpcs
+				dist := FindDistance(res.NodeID, id)
+				maxNode, maxDist := FindMaxDistContact(&shortlist, key)
+
+				if dist < maxDist { 
+					delete(shortlist, maxNode) // remove the node from shortlist if the new node is closer
+					shortlist[res] = false
+					if stopIter {
+						stopIter = false
+					}
+				}
 			}
 		}
 
@@ -478,4 +489,23 @@ func (k *Kademlia) FindCloseContacts(key ID, req ID) []Contact {
 			}
 		}
 	}
+}
+
+func FindDistance(keyOne ID, keyTwo ID) {
+	return keyOne.Xor(keyTwo).PrefixLen()
+}
+
+func FindMaxDist(shortlist * map[Contact]bool, key ID) {
+	maxDistance := math.MinUint32
+	maxContact Contact
+
+	for con := range(*shortlist) {
+		newDist := FindDistance(con.NodeID, key)
+		if newDist > maxDistance {
+			maxContact = con
+			maxDistance = newDist
+		}
+	}
+
+	return maxContact, maxDistance
 }
