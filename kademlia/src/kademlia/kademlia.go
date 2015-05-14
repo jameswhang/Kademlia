@@ -517,7 +517,7 @@ func (k *Kademlia) DoIterativeFindValue(key ID) string {
 			}
 		}
 	}
-	return "ID: " + resultValueWrapper.Contact.NodeID.AsString() + " and value: " + string(resultValueWrapper.Value)
+	return "OK: \nID: " + resultValueWrapper.Contact.NodeID.AsString() + " \nValue: " + string(resultValueWrapper.Value)
 }
 
 func (k *Kademlia) UpdateContactInKBucket(update *Contact) {
