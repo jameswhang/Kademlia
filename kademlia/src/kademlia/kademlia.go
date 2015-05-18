@@ -11,7 +11,7 @@ import (
 	"net/rpc"
 	"strconv"
 	"sync"
-	"time"
+	// "time"
 	"math"
 	"bytes"
 )
@@ -337,7 +337,7 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 			go k.SendRPCFindNode(&con, id, c)
 		}
 
-		time.Sleep(1e9)
+		// time.Sleep(1e9)
 		
 		stopIter = true
 
@@ -599,15 +599,19 @@ func (k *Kademlia) FindCloseContacts(key ID) []Contact {
 		}
 
 		for _, val := range k.BucketList[right].ContactList {
-			contacts = append(contacts, val)
-			if len(contacts) == 20 {
+			if val != nil {
+				contacts = append(contacts, val)
+			}
+			if len(contacts) == k {
 				return contacts
 			}
 		}
 
 		for _, val := range k.BucketList[left].ContactList {
-			contacts = append(contacts, val)
-			if len(contacts) == 20 {
+			if val != nil {
+				contacts = append(contacts, val)
+			}
+			if len(contacts) == k {
 				return contacts
 			}
 		}
