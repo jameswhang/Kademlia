@@ -291,11 +291,11 @@ func (k *Kademlia) DoIterativeFindNode(id ID) string {
 
 	count := 0
 	for _, con := range kContacts {
-		res += "--Triple " + strconv.Itoa(count) + "--"
+		res += "--Triple " + strconv.Itoa(count) + "--\n"
 		res += "NodeID = " + con.NodeID.AsString() + "\n"
 		res += "Host = " + con.Host.String() + "\n"
 		res += "Port = " + strconv.Itoa(int(con.Port))
-		res += "-------------"
+		res += "-------------\n"
 	}
 	return res
 }
@@ -304,10 +304,11 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 	// For project 2!
 	shortlist := make(map[ID]bool)
 	lookup := make(map[ID]Contact)
-	contacted := make([]Contact, 20)
-	//contacted := make(map[Contact]bool)
+	contacted := make([]Contact, 0, 20)
 	contacts := k.FindCloseContacts(id)
 	for i := 0; i < alpha; i++ {
+		fmt.Println("Initializing")
+		fmt.Println(contacts[i].NodeID)
 		shortlist[contacts[i].NodeID] = false
 		lookup[contacts[i].NodeID] = contacts[i]
 	}
@@ -316,8 +317,8 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 	stopIter := false
 
 	for len(contacted) < 20 && !stopIter {
+		fmt.Println("am i in here")
 		toContact := make([]Contact, 3)
-
 
 		count := 0
 		for s_contact_id, _ := range shortlist {
@@ -330,7 +331,10 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 		}
 
 		for _, con := range toContact {
-			go k.SendRPCFindNode(con, id, c)
+			fmt.Println("****")
+			fmt.Println(con.NodeID.AsString())
+			fmt.Println(con.Host.String())
+			go k.SendRPCFindNode(&con, id, c)
 		}
 
 		time.Sleep(1e9)
@@ -338,9 +342,12 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 		stopIter = true
 
 		for i := 0; i < alpha; i++ {
+			fmt.Println("PLEASE")
 			res := <- c
+			fmt.Println(res.Contact.NodeID.AsString())
 			// TODO: Somehow remove unresponsive node from the shortlist if RPC returns err
 			if res.Error != nil {
+				fmt.Println("ADDING")
 
 				// update shortlist if they responded
 				shortlist[res.Contact.NodeID] = true
@@ -351,6 +358,7 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 					maxNodeID, maxDist := FindMaxDist(shortlist, id)
 
 					if dist < maxDist { 
+						fmt.Println("TRYING TO DELETE")
 						delete(shortlist, maxNodeID) // remove the node from shortlist if the new node is closer
 						delete(lookup, maxNodeID)
 						shortlist[newContact.NodeID] = false
@@ -360,6 +368,7 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 					}
 				}
 			} else {
+				fmt.Println("TESTTESTTEST")
 				delete(lookup, res.Contact.NodeID)
 				delete(shortlist, res.Contact.NodeID) // remove unresponsive node
 			}
@@ -375,7 +384,13 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 	return contacted // TODO: change this to printable string
 }
 
-func (k *Kademlia) SendRPCFindNode(cont Contact, id ID, c chan ContactWrapper) {
+func (k *Kademlia) SendRPCFindNode(target * Contact, id ID, c chan ContactWrapper) {
+	cont := Contact {	
+		NodeID: CopyID(target.NodeID),
+		Host: target.Host,
+		Port: target.Port,
+	}
+	fmt.Println("Visited " + cont.NodeID.AsString())
 	port_str := strconv.Itoa(int(cont.Port))
 	address := cont.Host.String() + ":" + port_str
 	client, _ := rpc.DialHTTPPath("tcp", address, rpc.DefaultRPCPath+port_str)
@@ -387,16 +402,20 @@ func (k *Kademlia) SendRPCFindNode(cont Contact, id ID, c chan ContactWrapper) {
 
 	var result FindNodeResult
 	err := client.Call("KademliaCore.FindNode", request, &result)
+	fmt.Println("IS IT HERE")
 	if err != nil {
 		cWrapper := new(ContactWrapper)
 		cWrapper.Error = err
 		c <- *cWrapper
 	} else {
+		fmt.Println("SHOULD BE HERE")
 		k.UpdateContactInKBucket(&cont)
-		cWrapper := new(ContactWrapper)
-		cWrapper.Contact = cont
-		cWrapper.KnownContacts = result.Nodes
-		c <- *cWrapper
+		cWrapper := ContactWrapper {
+			Contact : cont,
+			KnownContacts : result.Nodes,
+		}
+		c <- cWrapper
+		fmt.Println("HERE")
 	}
 }
 
