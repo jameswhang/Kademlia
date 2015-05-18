@@ -11,7 +11,7 @@ import (
 	"net/rpc"
 	"strconv"
 	"sync"
-	// "time"
+	"time"
 	"math"
 	"bytes"
 )
@@ -306,9 +306,18 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 	lookup := make(map[ID]Contact)
 	contacted := make([]Contact, 0, 20)
 	contacts := k.FindCloseContacts(id)
-	for i := 0; i < alpha; i++ {
+
+	initialLength := len(contacts)
+	var lim int
+	if initialLength < alpha { // FindCloseContacts might return < 3 nodes
+		lim = initialLength
+	} else {
+		lim = alpha
+	}
+
+	for i := 0; i < lim; i++ {
 		fmt.Println("Initializing")
-		fmt.Println(contacts[i].NodeID)
+		fmt.Println(contacts[i].NodeID.AsString())
 		shortlist[contacts[i].NodeID] = false
 		lookup[contacts[i].NodeID] = contacts[i]
 	}
@@ -335,6 +344,7 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 			fmt.Println(con.NodeID.AsString())
 			fmt.Println(con.Host.String())
 			go k.SendRPCFindNode(&con, id, c)
+			time.Sleep(3e6)
 		}
 
 		// time.Sleep(1e9)
@@ -494,7 +504,7 @@ func (k *Kademlia) DoIterativeFindValue(key ID) string {
 			go k.SendRPCFindValue(con, id, c)
 		}
 
-		time.Sleep(1e9)
+		//time.Sleep(1e9)
 		
 		stopIter = true
 
@@ -593,26 +603,21 @@ func (k *Kademlia) FindCloseContacts(key ID) []Contact {
 	for {
 		if left != 0 {
 			left -= 1
-		}
-		if right != 159 {
+		} else if right != 159 {
 			right += 1
+		} else if left == 0 && right == 159 {
+			return contacts
 		}
 
 		for _, val := range k.BucketList[right].ContactList {
-			if val != nil {
+			if val.Host != nil {
 				contacts = append(contacts, val)
-			}
-			if len(contacts) == k {
-				return contacts
 			}
 		}
 
 		for _, val := range k.BucketList[left].ContactList {
-			if val != nil {
+			if val.Host != nil {
 				contacts = append(contacts, val)
-			}
-			if len(contacts) == k {
-				return contacts
 			}
 		}
 	}
