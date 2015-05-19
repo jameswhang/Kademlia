@@ -318,8 +318,6 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 	}
 
 	for i := 0; i < lim; i++ {
-		fmt.Println("Initializing")
-		fmt.Println(contacts[i].NodeID.AsString())
 		shortlist[contacts[i].NodeID] = false
 		lookup[contacts[i].NodeID] = contacts[i]
 	}
@@ -333,7 +331,6 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 	}()
 
 	for len(contacted) < 20 && !stopIter {
-		fmt.Println("am i in here")
 		toContact := make([]Contact, 3)
 
 		count := 0
@@ -347,11 +344,7 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 		}
 
 		for _, con := range toContact {
-			fmt.Println("****")
-			fmt.Println(con.NodeID.AsString())
-			fmt.Println(con.Host.String())
 			go k.SendRPCFindNode(&con, id, c)
-			fmt.Println("****")
 		}
 
 		// time.Sleep(1e9)
@@ -359,13 +352,10 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 		stopIter = true
 
 		for i := 0; i < alpha; i++ {
-			fmt.Println("PLEASE")
 			//res := <- c
 			select {
 			case res:= <-c:
-				fmt.Println(res.Contact.NodeID.AsString())
 				if res.Error != nil {
-					fmt.Println("ADDING")
 
 					for index, newContact := range res.KnownContacts {
 						if newContact.NodeID.Equals(res.Contact.NodeID) {
@@ -375,7 +365,6 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 					}
 					continue
 				}
-				fmt.Println("TESTTESTTEST")
 				for _, con := range res.KnownContacts {
 					contacted = append(contacted, con)
 				}
@@ -394,7 +383,6 @@ func (k *Kademlia) SendRPCFindNode(target * Contact, id ID, c chan ContactWrappe
 		Host: target.Host,
 		Port: target.Port,
 	}
-	fmt.Println("Visited " + cont.NodeID.AsString())
 	port_str := strconv.Itoa(int(cont.Port))
 	address := cont.Host.String() + ":" + port_str
 	client, _ := rpc.DialHTTPPath("tcp", address, rpc.DefaultRPCPath+port_str)
@@ -406,22 +394,18 @@ func (k *Kademlia) SendRPCFindNode(target * Contact, id ID, c chan ContactWrappe
 
 	var result FindNodeResult
 	err := client.Call("KademliaCore.FindNode", request, &result)
-	fmt.Println("IS IT HERE")
 	if err != nil {
 		cWrapper := ContactWrapper {
 			Error : err,
 		}
 		c <- cWrapper
-		fmt.Println("Error added")
 	} else {
-		fmt.Println("SHOULD BE HERE")
 		k.UpdateContactInKBucket(&cont)
 		cWrapper := ContactWrapper {
 			Contact : cont,
 			KnownContacts : result.Nodes,
 		}
 		c <- cWrapper
-		fmt.Println("HERE")
 	}
 }
 
