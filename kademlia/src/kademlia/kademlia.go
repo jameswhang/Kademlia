@@ -581,22 +581,26 @@ func (k *Kademlia) FindCloseContacts(key ID) []Contact {
 	left := index
 	right := index
 	for {
-		if left != 0 {
-			left -= 1
-		} else if right != 159 {
-			right += 1
-		} else if left == 0 && right == 159 {
+
+		if left == 0 && right == 159 {
 			return contacts
 		}
+		if left != 0 {
+			left -= 1
+		}
+		if right != 159 {
+			right += 1
+		}
+
 
 		for _, val := range k.BucketList[right].ContactList {
-			if val.Host != nil {
+			if val != nil && val.Host != nil {
 				contacts = append(contacts, val)
 			}
 		}
 
 		for _, val := range k.BucketList[left].ContactList {
-			if val.Host != nil {
+			if val != nil && val.Host != nil {
 				contacts = append(contacts, val)
 			}
 		}
