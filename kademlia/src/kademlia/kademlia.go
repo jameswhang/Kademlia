@@ -331,6 +331,7 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 	}()
 
 	for len(contacted) < 20 && !stopIter {
+		fmt.Println("WHERE AM I")
 		toContact := make([]Contact, 3)
 
 		count := 0
@@ -356,7 +357,6 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 			select {
 			case res:= <-c:
 				if res.Error != nil {
-
 					for index, newContact := range res.KnownContacts {
 						if newContact.NodeID.Equals(res.Contact.NodeID) {
 							res.KnownContacts = append(res.KnownContacts[:index], res.KnownContacts[i+1:]...)
@@ -378,6 +378,7 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 }
 
 func (k *Kademlia) SendRPCFindNode(target * Contact, id ID, c chan ContactWrapper) {
+	
 	cont := Contact {	
 		NodeID: CopyID(target.NodeID),
 		Host: target.Host,
@@ -401,6 +402,7 @@ func (k *Kademlia) SendRPCFindNode(target * Contact, id ID, c chan ContactWrappe
 		c <- cWrapper
 	} else {
 		k.UpdateContactInKBucket(&cont)
+		fmt.Println(len(result.Nodes))
 		cWrapper := ContactWrapper {
 			Contact : cont,
 			KnownContacts : result.Nodes,
@@ -409,30 +411,54 @@ func (k *Kademlia) SendRPCFindNode(target * Contact, id ID, c chan ContactWrappe
 	}
 }
 
-func (k *Kademlia) SendRPCFindValue(cont Contact, id ID, c chan ValueWrapper) {
+func (k *Kademlia) SendRPCFindValue(target * Contact, id ID, c chan ValueWrapper) {
+	fmt.Println("HERE")
+	
+	cont := Contact {
+		NodeID: CopyID(target.NodeID),
+		Host: target.Host,
+		Port: target.Port,
+	}
+	fmt.Println(cont.NodeID.AsString())
+
+
 	port_str := strconv.Itoa(int(cont.Port))
 	address := cont.Host.String() + ":" + port_str
 	client, _ := rpc.DialHTTPPath("tcp", address, rpc.DefaultRPCPath+port_str)
-
+	/*
 	request := new(FindNodeRequest)
 	request.Sender = cont
 	request.NodeID = id
 	request.MsgID = NewRandomID()
+	*/
+
+	request := FindNodeRequest {
+		Sender: cont,
+		NodeID: id,
+		MsgID: NewRandomID(),
+	}
 
 	var result FindValueResult
 	err := client.Call("KademliaCore.FindValue", request, &result)
 	if err != nil {
-		vWrapper := new(ValueWrapper)
-		vWrapper.Contact = cont
-		vWrapper.KnownContacts = result.Nodes
-		vWrapper.Error = err
-		c <- *vWrapper
+		fmt.Println("*********")
+		fmt.Println(len(result.Nodes))
+		vWrapper := ValueWrapper {
+			Contact: cont,
+			KnownContacts: result.Nodes,
+			Error: err,
+		}
+		c <- vWrapper
+		fmt.Println("PIKA")
 	} else {
 		k.UpdateContactInKBucket(&cont)
-		vWrapper := new(ValueWrapper)
-		vWrapper.Contact = cont
-		vWrapper.Value = result.Value
-		c <- *vWrapper
+		vWrapper := ValueWrapper {
+			Contact: cont,
+			Value: result.Value,
+			Error: nil,
+		}
+		c <- vWrapper
+		fmt.Println("AAAAAAAAAAA")
 	}
 }
 
@@ -451,82 +477,96 @@ func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 
 func (k *Kademlia) DoIterativeFindValue(key ID) string {
 	// For project 2!
+	fmt.Println("HAHAHAHAHA")
 	shortlist := make(map[ID]bool)
 	lookup := make(map[ID]Contact)
-	contacted := make([]Contact, 20)
+	contacted := make([]Contact, 0, 20)
+	timeout := make(chan bool, 1)
 	id := k.NodeID
-	var resultValueWrapper ValueWrapper
 	//contacted := make(map[Contact]bool)
+	var lim int
 	contacts := k.FindCloseContacts(id)
-	for i := 0; i < alpha; i++ {
+	initialLength := len(contacts)
+
+	if initialLength < alpha {
+		lim = initialLength
+	} else {
+		lim = alpha
+	}
+
+	for i := 0; i < lim; i++ {
 		shortlist[contacts[i].NodeID] = false
 		lookup[contacts[i].NodeID] = contacts[i]
 	}
 
 	c := make(chan ValueWrapper)
 	stopIter := false
+	fmt.Println(len(contacted))
+
+	var resultContact Contact
+	var resultValue []byte
 
 	for len(contacted) < 20 && !stopIter {
-		toContact := make([]Contact, 3)
-
-
+		toContact := make([]Contact, 0, 3)
 		count := 0
-		for s_contact_id, _ := range shortlist {
+		for s_contact_id, visited := range shortlist {
 			if count > alpha {
 				break;
-			} else if !alreadyContacted(contacted, lookup[s_contact_id]){
+			} else if !visited {
 				toContact = append(toContact, lookup[s_contact_id])
 				count += 1
 			}
 		}
 
+		go func() {
+			time.Sleep(5 * time.Second)
+			timeout <- true
+		}()
+
 		for _, con := range toContact {
-			go k.SendRPCFindValue(con, id, c)
+			go k.SendRPCFindValue(&con, id, c)
+			shortlist[con.NodeID] = true
+			delete(lookup, con.NodeID)
 		}
 
-		//time.Sleep(1e9)
-		
-		stopIter = true
+		//stopIter = true
 
 		for i := 0; i < alpha; i++ {
-			res := <- c
-			
-			if res.Error != nil {
-				// value not found
-				// update shortlist if they responded
-				shortlist[res.Contact.NodeID] = true
-				lookup[res.Contact.NodeID] = res.Contact
-
-				for _, newContact := range res.KnownContacts {
-					dist := FindDistance(newContact.NodeID, id)
-					maxNodeID, maxDist := FindMaxDist(shortlist, id)
-
-					if dist < maxDist { 
-						delete(shortlist, maxNodeID) // remove the node from shortlist if the new node is closer
-						delete(lookup, maxNodeID)
-						shortlist[newContact.NodeID] = false
-						if stopIter {
-							stopIter = false
+			select {
+			case res:= <- c:
+				if res.Error != nil {
+					fmt.Println("....")
+					fmt.Println(len(res.KnownContacts))
+					for index, newContact := range res.KnownContacts {
+						fmt.Println(index)
+						fmt.Println(newContact.NodeID.AsString())
+						if newContact.NodeID.Equals(res.Contact.NodeID) {
+							res.KnownContacts = append(res.KnownContacts[:index], res.KnownContacts[i+1:]...)
+							break
 						}
+						shortlist[newContact.NodeID] = false
+						lookup[newContact.NodeID] = newContact
+						stopIter = false
 					}
+					continue
+				} else {
+					// value is found
+					stopIter = true
+					fmt.Println("HEREHERE")
+					resultContact = Contact {
+						NodeID: CopyID(res.Contact.NodeID),
+						Host: res.Contact.Host,
+						Port: res.Contact.Port,
+					}
+					resultValue = res.Value
+					return "OK: \nID: " + resultContact.NodeID.AsString() + " \nValue: " + string(resultValue)
 				}
-			} else {
-				// value found
+			case <- timeout:
 				stopIter = true
-				resultValueWrapper = res
-				break
-				
-			}
-		}
-
-		// updating the contacted list
-		for s_contact_id, is_alive := range shortlist {
-			if is_alive {
-				contacted = append(contacted, lookup[s_contact_id])
 			}
 		}
 	}
-	return "OK: \nID: " + resultValueWrapper.Contact.NodeID.AsString() + " \nValue: " + string(resultValueWrapper.Value)
+	return "SHIT"
 }
 
 func (k *Kademlia) UpdateContactInKBucket(update *Contact) {
@@ -581,12 +621,14 @@ func (k *Kademlia) FindCloseContacts(key ID) []Contact {
 	left := index
 	right := index
 	for {
+		if left == 0 && right == 159 {
+			return contacts
+		}
 		if left != 0 {
 			left -= 1
-		} else if right != 159 {
+		}
+		if right != 159 {
 			right += 1
-		} else if left == 0 && right == 159 {
-			return contacts
 		}
 
 		for _, val := range k.BucketList[right].ContactList {
