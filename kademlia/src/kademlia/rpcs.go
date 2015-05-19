@@ -5,6 +5,7 @@ package kademlia
 // other groups' code.
 
 import (
+"fmt"
 	"net"
 )
 
@@ -129,8 +130,11 @@ func (kc *KademliaCore) FindValue(req FindValueRequest, res *FindValueResult) er
 	val := kc.kademlia.Table[req.Key]
 	kc.kademlia.TableMutexLock.Unlock()
 	res.Nodes = kc.kademlia.FindCloseContacts(req.Sender.NodeID)
+	fmt.Println("LOL")
+	fmt.Println(len(res.Nodes))
 
 	if val == nil || len(val) == 0 {
+		fmt.Println("ERRORERROR")
 		res.Value = nil
 		err := new(NotFoundError)
 		err.msg = "Value is nil or is empty byte array"

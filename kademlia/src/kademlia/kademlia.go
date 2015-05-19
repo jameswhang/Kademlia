@@ -421,10 +421,12 @@ func (k *Kademlia) SendRPCFindValue(target * Contact, id ID, c chan ValueWrapper
 	}
 	fmt.Println(cont.NodeID.AsString())
 
-
 	port_str := strconv.Itoa(int(cont.Port))
 	address := cont.Host.String() + ":" + port_str
-	client, _ := rpc.DialHTTPPath("tcp", address, rpc.DefaultRPCPath+port_str)
+	client, err := rpc.DialHTTPPath("tcp", address, rpc.DefaultRPCPath+port_str)
+	if err != nil {
+		log.Fatal("ERR: ", err)
+	}
 	/*
 	request := new(FindNodeRequest)
 	request.Sender = cont
@@ -439,10 +441,11 @@ func (k *Kademlia) SendRPCFindValue(target * Contact, id ID, c chan ValueWrapper
 	}
 
 	var result FindValueResult
-	err := client.Call("KademliaCore.FindValue", request, &result)
+	err = client.Call("KademliaCore.FindValue", request, &result)
 	if err != nil {
 		fmt.Println("*********")
 		fmt.Println(len(result.Nodes))
+		fmt.Println(result.Err)
 		vWrapper := ValueWrapper {
 			Contact: cont,
 			KnownContacts: result.Nodes,
@@ -533,7 +536,7 @@ func (k *Kademlia) DoIterativeFindValue(key ID) string {
 
 		for i := 0; i < alpha; i++ {
 			select {
-			case res:= <- c:
+			case res := <- c:
 				if res.Error != nil {
 					fmt.Println("....")
 					fmt.Println(len(res.KnownContacts))
@@ -563,6 +566,7 @@ func (k *Kademlia) DoIterativeFindValue(key ID) string {
 				}
 			case <- timeout:
 				stopIter = true
+				break
 			}
 		}
 	}
