@@ -306,6 +306,8 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 	lookup := make(map[ID]Contact)
 	contacted := make([]Contact, 0, 20)
 	contacts := k.FindCloseContacts(id)
+	timeout := make(chan bool, 1)
+	//closest := contacts[0]
 
 	initialLength := len(contacts)
 	var lim int
@@ -325,6 +327,11 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 	c := make(chan ContactWrapper)
 	stopIter := false
 
+	go func() {	// set timeout
+		time.Sleep(5 * time.Second)
+		timeout <- true
+	}()
+
 	for len(contacted) < 20 && !stopIter {
 		fmt.Println("am i in here")
 		toContact := make([]Contact, 3)
@@ -332,7 +339,7 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 		count := 0
 		for s_contact_id, _ := range shortlist {
 			if count > alpha {
-				break;
+				break
 			} else if !alreadyContacted(contacted, lookup[s_contact_id]){
 				toContact = append(toContact, lookup[s_contact_id])
 				count += 1
@@ -344,7 +351,7 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 			fmt.Println(con.NodeID.AsString())
 			fmt.Println(con.Host.String())
 			go k.SendRPCFindNode(&con, id, c)
-			time.Sleep(3e6)
+			fmt.Println("****")
 		}
 
 		// time.Sleep(1e9)
@@ -353,41 +360,28 @@ func (k *Kademlia) DoIterativeFindNodeWrapper(id ID) []Contact {
 
 		for i := 0; i < alpha; i++ {
 			fmt.Println("PLEASE")
-			res := <- c
-			fmt.Println(res.Contact.NodeID.AsString())
-			// TODO: Somehow remove unresponsive node from the shortlist if RPC returns err
-			if res.Error != nil {
-				fmt.Println("ADDING")
+			//res := <- c
+			select {
+			case res:= <-c:
+				fmt.Println(res.Contact.NodeID.AsString())
+				if res.Error != nil {
+					fmt.Println("ADDING")
 
-				// update shortlist if they responded
-				shortlist[res.Contact.NodeID] = true
-				lookup[res.Contact.NodeID] = res.Contact
-
-				for _, newContact := range res.KnownContacts {
-					dist := FindDistance(newContact.NodeID, id)
-					maxNodeID, maxDist := FindMaxDist(shortlist, id)
-
-					if dist < maxDist { 
-						fmt.Println("TRYING TO DELETE")
-						delete(shortlist, maxNodeID) // remove the node from shortlist if the new node is closer
-						delete(lookup, maxNodeID)
-						shortlist[newContact.NodeID] = false
-						if stopIter {
-							stopIter = false
+					for index, newContact := range res.KnownContacts {
+						if newContact.NodeID.Equals(res.Contact.NodeID) {
+							res.KnownContacts = append(res.KnownContacts[:index], res.KnownContacts[i+1:]...)
+							break
 						}
 					}
+					continue
 				}
-			} else {
 				fmt.Println("TESTTESTTEST")
-				delete(lookup, res.Contact.NodeID)
-				delete(shortlist, res.Contact.NodeID) // remove unresponsive node
-			}
-		}
-
-		// updating the contacted list
-		for s_contact_id, is_alive := range shortlist {
-			if is_alive {
-				contacted = append(contacted, lookup[s_contact_id])
+				for _, con := range res.KnownContacts {
+					contacted = append(contacted, con)
+				}
+			case <- timeout:
+				stopIter = true
+				//timeout
 			}
 		}
 	}
@@ -414,9 +408,11 @@ func (k *Kademlia) SendRPCFindNode(target * Contact, id ID, c chan ContactWrappe
 	err := client.Call("KademliaCore.FindNode", request, &result)
 	fmt.Println("IS IT HERE")
 	if err != nil {
-		cWrapper := new(ContactWrapper)
-		cWrapper.Error = err
-		c <- *cWrapper
+		cWrapper := ContactWrapper {
+			Error : err,
+		}
+		c <- cWrapper
+		fmt.Println("Error added")
 	} else {
 		fmt.Println("SHOULD BE HERE")
 		k.UpdateContactInKBucket(&cont)
