@@ -74,7 +74,37 @@ func decrypt(key []byte, ciphertext []byte) (text []byte) {
 
 func VanishData(kadem Kademlia, data []byte, numberKeys byte,
 	threshold byte) (vdo VanashingDataObject) {
-	return
+	copyData = copy()
+	K := GenerateRandomCryptoKey()
+	C := encrypt(K, data)
+	threshold_ratio := 0.5
+	threshold := byte(threshold_ratio * numberKeys)
+
+	split_map, err := Split(numberKeys, threshold, K)
+	if err != nil {
+		return err
+	}
+
+	L := GenerateRandomAccessKey()
+	ids := CalculateSharedKeyLocations(L, numberKeys)
+
+	index := 0
+	for key, value := range(split_map) {
+		data_to_store := append([]byte{key}, value...)
+		kadem_id := CopyID(ids[index])
+		store_result := kadem.DoIterativeStore(kadem_id, data_to_store)
+		//TODO : error detection, result interpretation of this store
+		index += 1
+	}
+
+	vdo := VanashingDataObject {
+		AccessKey: L,
+		Ciphertext: C,
+		NumberKeys: numberKeys,
+		Threshold: threshold,
+	}
+	
+	return vdo
 }
 
 func UnvanishData(kadem Kademlia, vdo VanashingDataObject) (data []byte) {
