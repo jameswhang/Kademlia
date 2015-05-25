@@ -274,6 +274,35 @@ func executeLine(k *kademlia.Kademlia, line string) (response string) {
 			return
 		}
 		response = k.DoIterativeFindValue(key)
+	case toks[0] == 'vanish':
+		// perform vanish
+		if len(toks) != 5 {
+			response = "usage: vanish [VDO ID] [data] [numberKeys] [threshold]"
+			return
+		}
+		key, err := kademlia.IDFromString(toks[1])
+		if err != nil {
+			response = "ERR: Provided an invalid VDO ID (" + toks[1] + ")"
+			return
+		}
+		response = VanishData(k, toks[2], toks[3], toks[4])
+	case toks[0] == 'unvanish':
+		// perform unvanish
+		if len(toks) != 3 {
+			response = "usage: unvanish [Node ID] [VDO ID]"
+			return
+		}
+		key1, err1 := kademlia.IDFromString(toks[1])
+		if err1 != nil {
+			response = "ERR: Provided an invalid ID (" + toks[1] + ")"
+			return
+		} else if err2 != nil {
+			response = "ERR: Provided an invalid VOD ID (" + toks[2] + ")"
+			return
+		}
+		// TODO: Not sure what to pass in as the vdo parameter to UnvanishData
+		//response = UnvanishData(k, )
+		return
 	default:
 		response = "ERR: Unknown command"
 	}
