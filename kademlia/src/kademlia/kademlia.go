@@ -29,8 +29,10 @@ type Kademlia struct {
 	SelfContact     Contact
 	BucketList      []KBucket
 	Table           map[ID][]byte
+	vdos			map[ID]VanishingDataObject
 	TableMutexLock  sync.Mutex
 	BucketMutexLock [bucket_count]sync.Mutex
+	vdoMutexLock	sync.Mutex
 }
 
 type ContactWrapper struct {

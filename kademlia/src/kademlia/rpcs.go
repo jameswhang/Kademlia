@@ -150,3 +150,32 @@ func (kc *KademliaCore) FindValue(req FindValueRequest, res *FindValueResult) er
 
 	return nil
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// VDOs
+///////////////////////////////////////////////////////////////////////////////
+type GetVDORequest struct {
+	Sender Contact
+	MsgID ID
+	VdoID ID
+}
+
+type GetVDOResult struct {
+	MsgID ID
+	VDO VanishingDataObject
+}
+
+func (kc *KademliaCore) GetVDO(req GetVDORequest, res *GetVDOResult) error {
+	kc.kademlia.vdoMutexLock.Lock()
+	vdo, err := kc.kademlia.vdos[req.VdoID]
+	kc.kademlia.vdoMutexLock.Unlock()
+
+	if err != nil {
+		return err
+	}
+
+	res.MsgID = CopyID(req.MsgID)
+	res.VDO = vdo
+
+	return nil
+}
