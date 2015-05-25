@@ -7,7 +7,7 @@ import (
 	"io"
     "time"
 	mathrand "math/rand"
-	//"sss"
+	"sss"
 )
 
 type VanashingDataObject struct {
@@ -80,7 +80,7 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte,
 	threshold_ratio := 0.5
 	threshold := byte(threshold_ratio * numberKeys)
 
-	split_map, err := Split(numberKeys, threshold, K)
+	split_map, err := sss.Split(numberKeys, threshold, K)
 	if err != nil {
 		return err
 	}
@@ -103,10 +103,34 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte,
 		NumberKeys: numberKeys,
 		Threshold: threshold,
 	}
-	
+
 	return vdo
 }
 
 func UnvanishData(kadem Kademlia, vdo VanashingDataObject) (data []byte) {
-	return
+	L := vdo.AccessKey
+	C := vdo.Ciphertext
+	N := vdo.NumberKeys
+	thres := vdo.Threshold
+
+	ids := CalculateSharedKeyLocations(L, N)
+
+	shares := make(map[byte][]byte)
+
+	count := 0 
+	for count <= thres {
+		to_query := CopyID(ids[0])
+		value := kadem.DoIterativeFindValue(to_query)
+
+		k_piece := value[0]
+		v_piece := value[1:]
+
+		shares[k_piece] = v_piece
+
+		count += 1
+	}
+
+	K := sss.Combine(shares)
+	decrypted_data := decrypt(K, C)
+	return decrypted_data
 }
