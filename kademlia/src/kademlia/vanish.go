@@ -10,7 +10,7 @@ import (
 	"sss"
 )
 
-type VanashingDataObject struct {
+type VanishingDataObject struct {
 	AccessKey  int64
 	Ciphertext []byte
 	NumberKeys byte
@@ -72,8 +72,7 @@ func decrypt(key []byte, ciphertext []byte) (text []byte) {
 	return ciphertext
 }
 
-func VanishData(kadem Kademlia, data []byte, numberKeys byte,
-	threshold byte) (vdo VanashingDataObject) {
+func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte) (vdo VanishingDataObject) {
 	copyData = copy()
 	K := GenerateRandomCryptoKey()
 	C := encrypt(K, data)
@@ -97,7 +96,7 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte,
 		index += 1
 	}
 
-	vdo := VanashingDataObject {
+	vdo := VanishingDataObject {
 		AccessKey: L,
 		Ciphertext: C,
 		NumberKeys: numberKeys,
@@ -107,7 +106,7 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte,
 	return vdo
 }
 
-func UnvanishData(kadem Kademlia, vdo VanashingDataObject) (data []byte) {
+func UnvanishData(kadem Kademlia, vdo VanishingDataObject) (data []byte) {
 	L := vdo.AccessKey
 	C := vdo.Ciphertext
 	N := vdo.NumberKeys
