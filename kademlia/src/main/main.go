@@ -280,12 +280,14 @@ func executeLine(k *kademlia.Kademlia, line string) (response string) {
 			response = "usage: vanish [VDO ID] [data] [numberKeys] [threshold]"
 			return
 		}
-		_, err := kademlia.IDFromString(toks[1])
+		vdoID , err := kademlia.IDFromString(toks[1])
 		if err != nil {
 			response = "ERR: Provided an invalid VDO ID (" + toks[1] + ")"
 			return
 		}
-		response, _ = kademlia.VanishData(*k, []byte(toks[2]), byte(toks[3][0]), byte(toks[4][0]))
+		response, vdo = kademlia.VanishData(*k, []byte(toks[2]), byte(toks[3][0]), byte(toks[4][0]))
+		k.vdos[vdoID] = vdo
+
 	case toks[0] == "unvanish":
 		// perform unvanish
 		if len(toks) != 3 {

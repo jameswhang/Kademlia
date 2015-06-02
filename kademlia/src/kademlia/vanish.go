@@ -110,7 +110,7 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte) (s
 		Threshold: threshold,
 	}
 
-	return "Vanished!", vdo
+	return "Vanished! Your VDO id: " + vdo.VdoID.AsString(), vdo
 }
 
 func UnvanishData(kadem Kademlia, vdo VanishingDataObject) (data []byte) {
