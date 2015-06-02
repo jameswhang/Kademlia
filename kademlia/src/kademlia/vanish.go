@@ -77,7 +77,7 @@ func decrypt(key []byte, ciphertext []byte) (text []byte) {
 	return ciphertext
 }
 
-func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte) (vdo VanishingDataObject) {
+func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte) (string, VanishingDataObject) {
 	// copyData := copy()
 	K := GenerateRandomCryptoKey()
 	C := encrypt(K, data)
@@ -103,14 +103,14 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte) (v
 		index += 1
 	}
 
-	vdo = VanishingDataObject {
+	vdo := VanishingDataObject {
 		AccessKey: L,
 		Ciphertext: C,
 		NumberKeys: numberKeys,
 		Threshold: threshold,
 	}
 
-	return vdo
+	return "Vanished!", vdo
 }
 
 func UnvanishData(kadem Kademlia, vdo VanishingDataObject) (data []byte) {
@@ -175,13 +175,8 @@ func DoIterativeFindValueWithFile(key ID) []byte {
 		// open file
 		path := "./nodes/" + key.AsString() + ".txt"
 		f, err := os.Open(path)
-<<<<<<< HEAD
 		handleError(err, "Error opening file.")
 		lines := readLinesFromFileInVanish(f)
-=======
-		handle(err, "Error opening file.")
-		lines := readLinesFromFile(path)
->>>>>>> minor changes to vanish.go
 		return []byte(lines[0])
 	} else {
 		return make([]byte, 0)
@@ -228,11 +223,7 @@ func readLinesFromFileInVanish(f *os.File) []string {
 func appendToFileInVanish(f *os.File, s string) {
 	writer := bufio.NewWriter(f)
 	_, err := writer.WriteString(s)
-<<<<<<< HEAD
-	handleError(err, "Error writing appending to file")
-=======
-	handle(err, "Error appending to file")
->>>>>>> minor changes to vanish.go
+	handleError(err, "Error appending to file")
 	err = writer.Flush()
 	handleError(err, "Error flushing after append.")
 }
