@@ -95,7 +95,13 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte) (v
 	for key, value := range(split_map) {
 		data_to_store := append([]byte{key}, value...)
 		kadem_id := CopyID(ids[index])
+		/*
+		If our DoIterative* functions from lab2 were working, we would
+		call them here. We are using local .txt files as an alternative.
+
 		store_result := kadem.DoIterativeStore(kadem_id, data_to_store)
+		*/
+		DoIterativeStoreWithFile(kadem_id, data_to_store)
 		//TODO : error detection, result interpretation of this store
 		index += 1
 	}
@@ -122,8 +128,14 @@ func UnvanishData(kadem Kademlia, vdo VanishingDataObject) (data []byte) {
 
 	count := 0 
 	for count <= thres {
-		to_query := CopyID(ids[0])
+		to_query := CopyID(ids[count])
+		/*
+		If our DoIterative* functions from lab2 were working, we would
+		call them here. We are using local .txt files as an alternative.
+
 		value := kadem.DoIterativeFindValue(to_query)
+		*/
+		value := DoIterativeFindValueWithFile(to_query)
 
 		k_piece := value[0]
 		v_piece := value[1:]
@@ -157,6 +169,17 @@ func DoIterativeStoreWithFile(key ID, value []byte) {
 		text := string(value)
 		writeStringToFile(f, text)
 		f.Close()
+	}
+}
+
+func DoIterativeFindValueWithFile(key ID) []byte {
+	if fileExists(key) {
+		// open file
+		path := "./nodes/" + key.AsString() + ".txt"
+		f, err = os.Open(path)
+		handle(err, "Error opening file.")
+		lines := readLinesFromFile(path)
+		return []byte(lines[0])
 	}
 }
 
