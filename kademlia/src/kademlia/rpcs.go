@@ -5,7 +5,7 @@ package kademlia
 // other groups' code.
 
 import (
-"fmt"
+	"fmt"
 	"net"
 )
 
@@ -165,17 +165,17 @@ type GetVDOResult struct {
 	VDO VanishingDataObject
 }
 
-func (kc *KademliaCore) GetVDO(req GetVDORequest, res *GetVDOResult) error {
+func (kc *KademliaCore) GetVDO(req GetVDORequest, res *GetVDOResult) bool {
 	kc.kademlia.vdoMutexLock.Lock()
 	vdo, err := kc.kademlia.vdos[req.VdoID]
 	kc.kademlia.vdoMutexLock.Unlock()
 
-	if err != nil {
+	if err != false {
 		return err
 	}
 
 	res.MsgID = CopyID(req.MsgID)
 	res.VDO = vdo
 
-	return nil
+	return false
 }

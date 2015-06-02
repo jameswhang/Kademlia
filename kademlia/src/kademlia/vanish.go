@@ -8,6 +8,10 @@ import (
     "time"
 	mathrand "math/rand"
 	"sss"
+	"io/ioutil"
+	"strings"
+	"os"
+	"bufio"
 )
 
 type VanishingDataObject struct {
@@ -73,11 +77,11 @@ func decrypt(key []byte, ciphertext []byte) (text []byte) {
 }
 
 func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte) (vdo VanishingDataObject) {
-	copyData = copy()
+	// copyData := copy()
 	K := GenerateRandomCryptoKey()
 	C := encrypt(K, data)
 	threshold_ratio := 0.5
-	threshold := byte(threshold_ratio * numberKeys)
+	threshold = byte(threshold_ratio * numberKeys)
 
 	split_map, err := sss.Split(numberKeys, threshold, K)
 	if err != nil {
@@ -96,7 +100,7 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte) (v
 		index += 1
 	}
 
-	vdo := VanishingDataObject {
+	vdo = VanishingDataObject {
 		AccessKey: L,
 		Ciphertext: C,
 		NumberKeys: numberKeys,
@@ -132,4 +136,51 @@ func UnvanishData(kadem Kademlia, vdo VanishingDataObject) (data []byte) {
 	K := sss.Combine(shares)
 	decrypted_data := decrypt(K, C)
 	return decrypted_data
+}
+
+func DoIterativeStoreWithFile(key ID, value []byte) {
+	if fileExists(key) {
+		// read lines from file
+		// write value to end of file
+	} else {
+		// create file with name of key
+		path = "./nodes/" + key.AsString() + ".txt"
+		f, err := os.Create(path)
+		handle(err, "Error occurred in file creation.")
+		// write value to file
+		text := string(value) + "\n"
+		writeStringToFile(f, text)
+		f.Close()
+	}
+}
+
+// error handler
+func handle(e error, msg string) {
+	if e != nil {
+		fmt.Printlm(msg)
+		panic(err)
+	}
+}
+
+func fileExists(key ID) bool {
+	files, _ := ioutil.ReadDir("./nodes")
+	for _, f := range files {
+		s := strings.Split(f.Name(), ".")
+		if s[0] == key.AsString() {
+			return true
+		}
+	}
+	return false
+}
+
+func writeStringToFile(f *os.File, text string) {
+	writer := bufio.NewWriter(f)
+	_, err := writer.WriteString(text)
+	handle(err, "Incomplete write to file")
+	err = writer.Flush()
+	handle(err, "Flushing error.")
+}
+
+func readLinesFromFile() []string {
+
 }
