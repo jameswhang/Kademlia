@@ -1,13 +1,13 @@
-package main
+package kademlia
 
 import (
 	"fmt"
 	// "io/ioutil"
-	"os"
 	"bufio"
+	"os"
 )
 
-func main() {
+func main_in_this() {
 	writeFile()
 }
 
@@ -62,13 +62,13 @@ func writeStringToFile(f *os.File, text string) error {
 	if err != nil {
 		fmt.Println("String incompletely written to file.")
 		return err
- 	}
- 	err = writer.Flush()
- 	if err != nil {
- 		fmt.Println("Flush error.")
+	}
+	err = writer.Flush()
+	if err != nil {
+		fmt.Println("Flush error.")
 		return err
- 	}
- 	return nil
+	}
+	return nil
 }
 
 func appendToFile(f *os.File, s string) {

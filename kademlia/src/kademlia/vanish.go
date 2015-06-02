@@ -12,6 +12,7 @@ import (
 	"strings"
 	"os"
 	"bufio"
+	"fmt"
 )
 
 type VanishingDataObject struct {
@@ -81,15 +82,11 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte) (v
 	K := GenerateRandomCryptoKey()
 	C := encrypt(K, data)
 	threshold_ratio := 0.5
-	threshold = byte(threshold_ratio * numberKeys)
+	threshold = byte(threshold_ratio * float64(numberKeys))
 
-	split_map, err := sss.Split(numberKeys, threshold, K)
-	if err != nil {
-		return err
-	}
-
+	split_map, _ := sss.Split(numberKeys, threshold, K)
 	L := GenerateRandomAccessKey()
-	ids := CalculateSharedKeyLocations(L, numberKeys)
+	ids := CalculateSharedKeyLocations(L, int64(numberKeys))
 
 	index := 0
 	for key, value := range(split_map) {
@@ -122,12 +119,12 @@ func UnvanishData(kadem Kademlia, vdo VanishingDataObject) (data []byte) {
 	N := vdo.NumberKeys
 	thres := vdo.Threshold
 
-	ids := CalculateSharedKeyLocations(L, N)
+	ids := CalculateSharedKeyLocations(L, int64(N))
 
 	shares := make(map[byte][]byte)
 
 	count := 0 
-	for count <= thres {
+	for count <= int(thres) {
 		to_query := CopyID(ids[count])
 		/*
 		If our DoIterative* functions from lab2 were working, we would
@@ -154,20 +151,20 @@ func DoIterativeStoreWithFile(key ID, value []byte) {
 	if fileExists(key) {
 		// open existing file
 		path := "./nodes/" + key.AsString() + ".txt"
-		f, err := os.OpenFile(path, os.RDWR|os.O_APPEND, 0660)
-		handle(err, "Cannot open file to append.")
+		f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND, 0660)
+		handleError(err, "Cannot open file to append.")
 		// write value to end of file
 		text := "\n" + string(value)
-		appendToFile(f, text)
+		appendToFileInVanish(f, text)
 		f.Close()
 	} else {
 		// create file with name of key
-		path = "./nodes/" + key.AsString() + ".txt"
+		path := "./nodes/" + key.AsString() + ".txt"
 		f, err := os.Create(path)
-		handle(err, "Error occurred in file creation.")
+		handleError(err, "Error occurred in file creation.")
 		// write value to file
 		text := string(value)
-		writeStringToFile(f, text)
+		writeStringToFileInVanish(f, text)
 		f.Close()
 	}
 }
@@ -176,15 +173,16 @@ func DoIterativeFindValueWithFile(key ID) []byte {
 	if fileExists(key) {
 		// open file
 		path := "./nodes/" + key.AsString() + ".txt"
-		f, err = os.Open(path)
-		handle(err, "Error opening file.")
-		lines := readLinesFromFile(path)
+		f, err := os.Open(path)
+		handleError(err, "Error opening file.")
+		lines := readLinesFromFileInVanish(f)
 		return []byte(lines[0])
 	}
+	return nil
 }
 
 // error handler
-func handle(e error, msg string) {
+func handleError(e error, msg string) {
 	if e != nil {
 		fmt.Println(msg)
 		panic(e)
@@ -202,15 +200,15 @@ func fileExists(key ID) bool {
 	return false
 }
 
-func writeStringToFile(f *os.File, text string) {
+func writeStringToFileInVanish(f *os.File, text string) {
 	writer := bufio.NewWriter(f)
 	_, err := writer.WriteString(text)
-	handle(err, "Incomplete write to file")
+	handleError(err, "Incomplete write to file")
 	err = writer.Flush()
-	handle(err, "Flushing error.")
+	handleError(err, "Flushing error.")
 }
 
-func readLinesFromFile(f *os.File) []string {
+func readLinesFromFileInVanish(f *os.File) []string {
 	scanner := bufio.NewScanner(f)
 	list := make([]string, 0)
 	for scanner.Scan() {
@@ -219,11 +217,11 @@ func readLinesFromFile(f *os.File) []string {
 	return list
 }
 
-func appendToFile(f *os.File, s string) {
+func appendToFileInVanish(f *os.File, s string) {
 	writer := bufio.NewWriter(f)
 	_, err := writer.WriteString(s)
-	handle(err, "Error writing appending to file")
+	handleError(err, "Error writing appending to file")
 	err = writer.Flush()
-	handle(err, "Error flushing after append.")
+	handleError(err, "Error flushing after append.")
 }
 
