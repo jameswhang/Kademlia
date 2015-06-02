@@ -140,15 +140,21 @@ func UnvanishData(kadem Kademlia, vdo VanishingDataObject) (data []byte) {
 
 func DoIterativeStoreWithFile(key ID, value []byte) {
 	if fileExists(key) {
-		// read lines from file
+		// open existing file
+		path := "./nodes/" + key.AsString() + ".txt"
+		f, err := os.OpenFile(path, os.RDWR|os.O_APPEND, 0660)
+		handle(err, "Cannot open file to append.")
 		// write value to end of file
+		text := "\n" + string(value)
+		appendToFile(f, text)
+		f.Close()
 	} else {
 		// create file with name of key
 		path = "./nodes/" + key.AsString() + ".txt"
 		f, err := os.Create(path)
 		handle(err, "Error occurred in file creation.")
 		// write value to file
-		text := string(value) + "\n"
+		text := string(value)
 		writeStringToFile(f, text)
 		f.Close()
 	}
@@ -157,8 +163,8 @@ func DoIterativeStoreWithFile(key ID, value []byte) {
 // error handler
 func handle(e error, msg string) {
 	if e != nil {
-		fmt.Printlm(msg)
-		panic(err)
+		fmt.Println(msg)
+		panic(e)
 	}
 }
 
@@ -181,6 +187,20 @@ func writeStringToFile(f *os.File, text string) {
 	handle(err, "Flushing error.")
 }
 
-func readLinesFromFile() []string {
-
+func readLinesFromFile(f *os.File) []string {
+	scanner := bufio.NewScanner(f)
+	list := make([]string, 0)
+	for scanner.Scan() {
+		list = append(list, scanner.Text())
+	}
+	return list
 }
+
+func appendToFile(f *os.File, s string) {
+	writer := bufio.NewWriter(f)
+	_, err := writer.WriteString(s)
+	handle(err, "Error writing appending to file")
+	err = writer.Flush()
+	handle(err, "Error flushing after append.")
+}
+
