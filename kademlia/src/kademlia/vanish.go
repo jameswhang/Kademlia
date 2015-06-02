@@ -93,7 +93,7 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte) (v
 		data_to_store := append([]byte{key}, value...)
 		kadem_id := CopyID(ids[index])
 		/*
-		If our DoIterative* functions from lab2 were working, we would
+		If our DoIterative functions from lab2 were working, we would
 		call them here. We are using local .txt files as an alternative.
 
 		store_result := kadem.DoIterativeStore(kadem_id, data_to_store)
@@ -148,6 +148,7 @@ func UnvanishData(kadem Kademlia, vdo VanishingDataObject) (data []byte) {
 }
 
 func DoIterativeStoreWithFile(key ID, value []byte) {
+	// check if file exists first
 	if fileExists(key) {
 		// open existing file
 		path := "./nodes/" + key.AsString() + ".txt"
@@ -174,9 +175,16 @@ func DoIterativeFindValueWithFile(key ID) []byte {
 		// open file
 		path := "./nodes/" + key.AsString() + ".txt"
 		f, err := os.Open(path)
+<<<<<<< HEAD
 		handleError(err, "Error opening file.")
 		lines := readLinesFromFileInVanish(f)
+=======
+		handle(err, "Error opening file.")
+		lines := readLinesFromFile(path)
+>>>>>>> minor changes to vanish.go
 		return []byte(lines[0])
+	} else {
+		return make([]byte, 0)
 	}
 	return nil
 }
@@ -220,7 +228,11 @@ func readLinesFromFileInVanish(f *os.File) []string {
 func appendToFileInVanish(f *os.File, s string) {
 	writer := bufio.NewWriter(f)
 	_, err := writer.WriteString(s)
+<<<<<<< HEAD
 	handleError(err, "Error writing appending to file")
+=======
+	handle(err, "Error appending to file")
+>>>>>>> minor changes to vanish.go
 	err = writer.Flush()
 	handleError(err, "Error flushing after append.")
 }
