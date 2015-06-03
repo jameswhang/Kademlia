@@ -29,7 +29,7 @@ type Kademlia struct {
 	SelfContact     Contact
 	BucketList      []KBucket
 	Table           map[ID][]byte
-	vdos			map[ID]VanishingDataObject
+	Vdos			map[ID]VanishingDataObject
 	TableMutexLock  sync.Mutex
 	BucketMutexLock [bucket_count]sync.Mutex
 	vdoMutexLock	sync.Mutex
@@ -56,6 +56,9 @@ func NewKademlia(laddr string) *Kademlia {
 
 	// initialize the data entry table
 	k.Table = make(map[ID][]byte)
+
+	// initialize Vdos map
+	k.Vdos = make(map[ID]VanishingDataObject)
 
 	// initialize all k-buckets
 	for i := 0; i < b; i++ {

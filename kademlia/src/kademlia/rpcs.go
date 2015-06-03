@@ -167,7 +167,7 @@ type GetVDOResult struct {
 
 func (kc *KademliaCore) GetVDO(req GetVDORequest, res *GetVDOResult) bool {
 	kc.kademlia.vdoMutexLock.Lock()
-	vdo, err := kc.kademlia.vdos[req.VdoID]
+	vdo, err := kc.kademlia.Vdos[req.VdoID]
 	kc.kademlia.vdoMutexLock.Unlock()
 
 	if err != false {

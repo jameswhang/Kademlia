@@ -10,6 +10,7 @@ import (
 	"sss"
 	"io/ioutil"
 	"strings"
+	"strconv"
 	"os"
 	"bufio"
 	"fmt"
@@ -103,6 +104,8 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte) (s
 		index += 1
 	}
 
+	fmt.Println("Shares size: " + strconv.Itoa(len(ids)))
+
 	vdo := VanishingDataObject {
 		AccessKey: L,
 		Ciphertext: C,
@@ -110,10 +113,10 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte) (s
 		Threshold: threshold,
 	}
 
-	return "Vanished! Your VDO id: " + vdo.VdoID.AsString(), vdo
+	return "Vanished!", vdo
 }
 
-func UnvanishData(kadem Kademlia, vdo VanishingDataObject) (data []byte) {
+func UnvanishData(kadem Kademlia, vdo VanishingDataObject) (string, []byte) {
 	L := vdo.AccessKey
 	C := vdo.Ciphertext
 	N := vdo.NumberKeys
@@ -123,9 +126,9 @@ func UnvanishData(kadem Kademlia, vdo VanishingDataObject) (data []byte) {
 
 	shares := make(map[byte][]byte)
 
-	count := 0 
-	for count <= int(thres) {
-		to_query := CopyID(ids[count])
+	index := 0 
+	for index <= int(thres) {
+		to_query := CopyID(ids[index])
 		/*
 		If our DoIterative* functions from lab2 were working, we would
 		call them here. We are using local .txt files as an alternative.
@@ -139,12 +142,12 @@ func UnvanishData(kadem Kademlia, vdo VanishingDataObject) (data []byte) {
 
 		shares[k_piece] = v_piece
 
-		count += 1
+		index += 1
 	}
-
+	fmt.Println("Share size " + strconv.Itoa(len(shares)))
 	K := sss.Combine(shares)
 	decrypted_data := decrypt(K, C)
-	return decrypted_data
+	return "Unvanished!", decrypted_data
 }
 
 func DoIterativeStoreWithFile(key ID, value []byte) {
@@ -162,7 +165,7 @@ func DoIterativeStoreWithFile(key ID, value []byte) {
 		// create file with name of key
 		path := "./nodes/" + key.AsString() + ".txt"
 		f, err := os.Create(path)
-		handleError(err, "Error occurred in file creation.")
+		handleError(err, "Error occurred in new file creation.")
 		// write value to file
 		text := string(value)
 		writeStringToFileInVanish(f, text)
@@ -171,17 +174,13 @@ func DoIterativeStoreWithFile(key ID, value []byte) {
 }
 
 func DoIterativeFindValueWithFile(key ID) []byte {
-	if fileExists(key) {
-		// open file
-		path := "./nodes/" + key.AsString() + ".txt"
-		f, err := os.Open(path)
-		handleError(err, "Error opening file.")
-		lines := readLinesFromFileInVanish(f)
-		return []byte(lines[0])
-	} else {
-		return make([]byte, 0)
-	}
-	return nil
+	// open file
+	path := "./nodes/" + key.AsString() + ".txt"
+	// f, err := os.Open(path)
+	// handleError(err, "Error opening file.")
+	// lines := readLinesFromFileInVanish(f)
+	line := readFromFileInVanish(path)
+	return line
 }
 
 // error handler
@@ -226,5 +225,11 @@ func appendToFileInVanish(f *os.File, s string) {
 	handleError(err, "Error appending to file")
 	err = writer.Flush()
 	handleError(err, "Error flushing after append.")
+}
+
+func readFromFileInVanish(filename string) []byte {
+	b, err := ioutil.ReadFile(filename)
+	handleError(err, "Reading from file error.")
+	return b
 }
 

@@ -2,13 +2,13 @@ package kademlia
 
 import (
 	"fmt"
-	// "io/ioutil"
+	"io/ioutil"
 	"bufio"
 	"os"
 )
 
 func main_in_this() {
-	writeFile()
+	readFile()
 }
 
 func createFile() {
@@ -29,13 +29,12 @@ func handle(e error, msg string) {
 }
 
 func readFile() {
-	f, err := os.Open("./nodes/write.txt")
-	handle(err, "")
-	lines := readLinesFromFile(f)
-	for _, l := range lines {
-		fmt.Println(l)
-	}
-	f.Close()
+	path := "./nodes/6aded190011951343d3e6e8f19a550d833a3ac7f.txt"
+	// f, err := os.Open("./nodes/77bdbb08c418bab6de1d838da01a60e8632b75a8.txt")
+	// handle(err, "")
+	line := readFromFile(path)
+	fmt.Println(line)
+	// f.Close()
 }
 
 func writeFile() {
@@ -54,6 +53,14 @@ func readLinesFromFile(f *os.File) []string {
 		list = append(list, scanner.Text())
 	}
 	return list
+}
+
+func readFromFile(filename string) []byte {
+	
+	b, err := ioutil.ReadFile(filename)
+	handle(err, "Reading from file error.")
+	fmt.Println(len(b))
+	return b
 }
 
 func writeStringToFile(f *os.File, text string) error {

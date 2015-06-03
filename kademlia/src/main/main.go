@@ -285,16 +285,17 @@ func executeLine(k *kademlia.Kademlia, line string) (response string) {
 			response = "ERR: Provided an invalid VDO ID (" + toks[1] + ")"
 			return
 		}
-		response, vdo = kademlia.VanishData(*k, []byte(toks[2]), byte(toks[3][0]), byte(toks[4][0]))
-		k.vdos[vdoID] = vdo
+		res, vdo := kademlia.VanishData(*k, []byte(toks[2]), byte(toks[3][0]), byte(toks[4][0]))
+		response = res
+		k.Vdos[vdoID] = vdo
 
 	case toks[0] == "unvanish":
 		// perform unvanish
-		if len(toks) != 3 {
-			response = "usage: unvanish [Node ID] [VDO ID]"
+		if len(toks) != 2 {
+			response = "usage: unvanish [VDO ID]"
 			return
 		}
-		_, err1 := kademlia.IDFromString(toks[1])
+		vdoID, err1 := kademlia.IDFromString(toks[1])
 		if err1 != nil {
 			response = "ERR: Provided an invalid ID (" + toks[1] + ")"
 			return
@@ -306,7 +307,9 @@ func executeLine(k *kademlia.Kademlia, line string) (response string) {
 		// }
 		// TODO: Not sure what to pass in as the vdo parameter to UnvanishData
 		//response = UnvanishData(k, )
-		return
+		vdo_to_pass := k.Vdos[vdoID]
+		res, data := kademlia.UnvanishData(*k, vdo_to_pass)
+		response = res + " Here is your data: " + string(data)
 	default:
 		response = "ERR: Unknown command"
 	}
