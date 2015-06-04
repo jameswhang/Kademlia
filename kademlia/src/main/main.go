@@ -275,7 +275,6 @@ func executeLine(k *kademlia.Kademlia, line string) (response string) {
 		}
 		response = k.DoIterativeFindValue(key)
 	case toks[0] == "vanish":
-		fmt.Println("LOL")
 		// perform vanish
 		if len(toks) != 6 {
 			response = "usage: vanish [VDO ID] [data] [numberKeys] [threshold] [timeout]"
