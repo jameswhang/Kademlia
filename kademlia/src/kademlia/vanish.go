@@ -78,7 +78,7 @@ func decrypt(key []byte, ciphertext []byte) (text []byte) {
 	return ciphertext
 }
 
-func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte, timeout int) (string, VanishingDataObject) {
+func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte, timeout int64) (string, VanishingDataObject) {
 	// copyData := copy()
 	var index int
 	K := GenerateRandomCryptoKey()
@@ -99,10 +99,10 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte, ti
 	}
 
 	go func() {
-		// Checking for timeout every 0.5 seconds. 
+		// Checking for timeout every 0.1 seconds. 
 		// Probably can make this smaller for finer timeout
-		time.Sleep(time.Second * 0.5)
-		if (time.Now.UnixNano() - kadem.lastTimeout) / 1000000000 > timeout {
+		time.Sleep(100 * time.Millisecond)
+		if (time.Now().UnixNano() - kadem.LastTimeout) / 1000000000 > int64(timeout) {
 			timeoutChan <- true
 		}
 	}()
@@ -117,12 +117,21 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte, ti
 		new_L := GenerateRandomAccessKey()
 		new_ids := CalculateSharedKeyLocations(new_L, int64(numberKeys))
 		index = 0
+		new_vdo := VanishingDataObject {
+			AccessKey: new_L,
+			Ciphertext: new_C,
+			NumberKeys: numberKeys,
+			Threshold: threshold,
+		}
 		for k, v := range(new_split_map) {
-			new_data_to_store := append([]byte{key}, value...)
+			new_data_to_store := append([]byte{k}, v...)
 			new_kadem_id := CopyID(new_ids[index])
 			DoIterativeStoreWithFile(new_kadem_id, new_data_to_store)
 			index += 1
 		}
+		fmt.Println("Shares size: " + strconv.Itoa(len(new_ids)))
+		return "Timed out, new VDO generated", new_vdo
+
 	default:
 		// Default Case
 		index = 0
@@ -143,7 +152,7 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte, ti
 	}
 
 	fmt.Println("Shares size: " + strconv.Itoa(len(ids)))
-	kadem.lastTimeout = time.Now.UnixNano()
+	kadem.LastTimeout = time.Now().UnixNano()
 
 	return "Vanished!", vdo
 }
