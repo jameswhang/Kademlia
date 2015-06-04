@@ -286,6 +286,7 @@ func executeLine(k *kademlia.Kademlia, line string) (response string) {
 			return
 		}
 		timeout := strconv.Itoa(toks[5])
+		k.lastTimeout = time.Now.UnixNano()
 		res, vdo := kademlia.VanishData(*k, []byte(toks[2]), byte(toks[3][0]), byte(toks[4][0]), timeout)
 		response = res
 		k.Vdos[vdoID] = vdo
