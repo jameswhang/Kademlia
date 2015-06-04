@@ -99,13 +99,17 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte, ti
 	}
 
 	go func() {
-		time.Sleep(timeout * time.Second)
-		timeout <- true
+		// Checking for timeout every 0.5 seconds. 
+		// Probably can make this smaller for finer timeout
+		time.Sleep(time.Second * 0.5)
+		if (time.Now.UnixNano() - kadem.lastTimeout) / 1000000000 > timeout {
+			timeoutChan <- true
+		}
 	}()
 
 	select {
 		// Timeout case
-	case <- timeout:
+	case <- timeoutChan:
 		_, old_data := UnvanishData(kadem, vdo) // First get the data again
 		new_K := GenerateRandomCryptoKey() // Repeat the process in the default case
 		new_C := encrypt(new_K, old_data)
@@ -134,14 +138,12 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte, ti
 			DoIterativeStoreWithFile(kadem_id, data_to_store)
 			//TODO : error detection, result interpretation of this store
 			index += 1
+
 		}
 	}
 
-	
-
-
-
 	fmt.Println("Shares size: " + strconv.Itoa(len(ids)))
+	kadem.lastTimeout = time.Now.UnixNano()
 
 	return "Vanished!", vdo
 }

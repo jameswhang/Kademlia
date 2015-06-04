@@ -33,6 +33,7 @@ type Kademlia struct {
 	TableMutexLock  sync.Mutex
 	BucketMutexLock [bucket_count]sync.Mutex
 	vdoMutexLock	sync.Mutex
+	lastTimeout		int64
 }
 
 type ContactWrapper struct {
