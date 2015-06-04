@@ -276,8 +276,8 @@ func executeLine(k *kademlia.Kademlia, line string) (response string) {
 		response = k.DoIterativeFindValue(key)
 	case toks[0] == "vanish":
 		// perform vanish
-		if len(toks) != 5 {
-			response = "usage: vanish [VDO ID] [data] [numberKeys] [threshold]"
+		if len(toks) != 6 {
+			response = "usage: vanish [VDO ID] [data] [numberKeys] [threshold] [timeout]"
 			return
 		}
 		vdoID , err := kademlia.IDFromString(toks[1])
@@ -285,7 +285,8 @@ func executeLine(k *kademlia.Kademlia, line string) (response string) {
 			response = "ERR: Provided an invalid VDO ID (" + toks[1] + ")"
 			return
 		}
-		res, vdo := kademlia.VanishData(*k, []byte(toks[2]), byte(toks[3][0]), byte(toks[4][0]))
+		timeout := strconv.Itoa(toks[5])
+		res, vdo := kademlia.VanishData(*k, []byte(toks[2]), byte(toks[3][0]), byte(toks[4][0]), timeout)
 		response = res
 		k.Vdos[vdoID] = vdo
 

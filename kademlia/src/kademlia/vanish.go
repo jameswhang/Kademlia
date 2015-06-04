@@ -37,7 +37,7 @@ func GenerateRandomAccessKey() (accessKey int64) {
 }
 
 func CalculateSharedKeyLocations(accessKey int64, count int64) (ids []ID) {
-	r := mathrand.New(mathrand.NewSource(accessKey))
+	r := mathrand.New(mathrand.NewSource(time.Now().UnixNano() * accessKey))
 	ids = make([]ID, count)
 	for i := int64(0); i < count; i++ {
 		for j := 0; j < IDBytes; j++ {
@@ -78,33 +78,18 @@ func decrypt(key []byte, ciphertext []byte) (text []byte) {
 	return ciphertext
 }
 
-func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte) (string, VanishingDataObject) {
+func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte, timeout int) (string, VanishingDataObject) {
 	// copyData := copy()
+	var index int
 	K := GenerateRandomCryptoKey()
 	C := encrypt(K, data)
 	threshold_ratio := 0.5
+	timeoutChan := make(chan bool, 1)
 	threshold = byte(threshold_ratio * float64(numberKeys))
 
 	split_map, _ := sss.Split(numberKeys, threshold, K)
 	L := GenerateRandomAccessKey()
 	ids := CalculateSharedKeyLocations(L, int64(numberKeys))
-
-	index := 0
-	for key, value := range(split_map) {
-		data_to_store := append([]byte{key}, value...)
-		kadem_id := CopyID(ids[index])
-		/*
-		If our DoIterative functions from lab2 were working, we would
-		call them here. We are using local .txt files as an alternative.
-
-		store_result := kadem.DoIterativeStore(kadem_id, data_to_store)
-		*/
-		DoIterativeStoreWithFile(kadem_id, data_to_store)
-		//TODO : error detection, result interpretation of this store
-		index += 1
-	}
-
-	fmt.Println("Shares size: " + strconv.Itoa(len(ids)))
 
 	vdo := VanishingDataObject {
 		AccessKey: L,
@@ -112,6 +97,51 @@ func VanishData(kadem Kademlia, data []byte, numberKeys byte, threshold byte) (s
 		NumberKeys: numberKeys,
 		Threshold: threshold,
 	}
+
+	go func() {
+		time.Sleep(timeout * time.Second)
+		timeout <- true
+	}()
+
+	select {
+		// Timeout case
+	case <- timeout:
+		_, old_data := UnvanishData(kadem, vdo) // First get the data again
+		new_K := GenerateRandomCryptoKey() // Repeat the process in the default case
+		new_C := encrypt(new_K, old_data)
+		new_split_map, _ := sss.Split(numberKeys, threshold, new_K)
+		new_L := GenerateRandomAccessKey()
+		new_ids := CalculateSharedKeyLocations(new_L, int64(numberKeys))
+		index = 0
+		for k, v := range(new_split_map) {
+			new_data_to_store := append([]byte{key}, value...)
+			new_kadem_id := CopyID(new_ids[index])
+			DoIterativeStoreWithFile(new_kadem_id, new_data_to_store)
+			index += 1
+		}
+	default:
+		// Default Case
+		index = 0
+		for key, value := range(split_map) {
+			data_to_store := append([]byte{key}, value...)
+			kadem_id := CopyID(ids[index])
+			/*
+			If our DoIterative functions from lab2 were working, we would
+			call them here. We are using local .txt files as an alternative.
+
+			store_result := kadem.DoIterativeStore(kadem_id, data_to_store)
+			*/
+			DoIterativeStoreWithFile(kadem_id, data_to_store)
+			//TODO : error detection, result interpretation of this store
+			index += 1
+		}
+	}
+
+	
+
+
+
+	fmt.Println("Shares size: " + strconv.Itoa(len(ids)))
 
 	return "Vanished!", vdo
 }
